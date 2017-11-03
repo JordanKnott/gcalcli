@@ -2433,6 +2433,51 @@ def add_event(title, location, when, duration, allday, description, prompt, who,
     gcal.AddEvent(title, location, eStart, eEnd,
                   description, who, reminder)
 
+@click.command("delete")
+@click.argument("title")
+@click.option("--start-date", "-s", default=None, help="The starting date to start deleting events from")
+@click.option("--end-date", "-e", default=None, help="The ending date to start deleting events to")
+@click.option("--force", "-f", default=False, help="Force delete events. USE WITH CAUTION")
+@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
+@click.option("--calendar", default=[], help="Which calendars to use;" +
+                                             "repeat this option to specify a list of values")
+@click.option("--client-id", default=None, help="API client_id")
+@click.option("--client-secret", default=None, help="API client_secret")
+@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
+@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
+@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
+@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
+@click.option("--default-calendar", default=[],
+              help="Optional default calendar to use if no --calendar options are given; " +
+                   "repeat this this option to speciy a list of values")
+@click.option("--include-config/--no-include-config", default=False,
+              help="Whether to include ~/.gcalclirc when using --config-folder")
+@click.option("--locale", "user_locale", default=None, help="System locale")
+@click.option("--military/--no-military", default=False, help="Use 24 hour display")
+@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
+@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
+@click.option("--started/--no-started", default=True, help="Show events that have started")
+@click.option("--verbose", "-v", default=False, help="Show logs")
+def delete_events(title, start_date, end_date, force, cache, calendar, client_id, client_secret, color, set_color, config_folder, conky,
+                   default_calendar, include_config, user_locale, military, monday, refresh, started,
+                   verbose):
+    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
+
+    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
+    gcal = gcalcli(calNames=calNames,
+                   calNameColors=calNameColors)
+    gcal.load()
+
+    eStart = None
+    eEnd = None
+
+    if start_date is not None:
+        eStart = gcal.dateParser.fromString(start_date)
+    elif start_date is not None and end_date is not None:
+        eStart = gcal.dateParser.fromString(start_date)
+        eEnd = gcal.dateParser.fromString(end_date)
+
+    gcal.DeleteEvents(str(title), force, eStart, eEnd)
 
 def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
     if not color:
@@ -2484,6 +2529,7 @@ gcal.add_command(show_calendar_week)
 gcal.add_command(show_calendar_month)
 gcal.add_command(quick_add_event)
 gcal.add_command(add_event)
+gcal.add_command(delete_events)
 
 signal.signal(signal.SIGINT, SIGINT_handler)
 
