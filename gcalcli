@@ -2107,6 +2107,14 @@ def show_agenda(cache, calendar, client_id, client_secret, color, set_color, con
                 verbose, width):
     """Shows the current agenda. Uses the default calendar unless otherwise specified"""
 
+    calNames, calNameColors = setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar)
+    gcal = gcalcli(calNames=calNames,
+                   calNameColors=calNameColors)
+    gcal.load()
+    gcal.AgendaQuery()
+
+
+def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
     if not color:
         CLR.useColor = False
 
@@ -2135,11 +2143,7 @@ def show_agenda(cache, calendar, client_id, client_secret, color, set_color, con
         calNamesFiltered.append(str(calNameSimple))
         calNameColors.append(calColors[calNameSimple])
     calNames = calNamesFiltered
-
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-    gcal.AgendaQuery()
+    return calNames, calNameColors
 
 
 def SIGINT_handler(signum, frame):
