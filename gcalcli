@@ -857,6 +857,8 @@ class gcalcli(object):
 
     def _GraphEvents(self, cmd, startDateTime, count, eventList):
 
+        count = int(count)
+
         # ignore started events (i.e. events that start previous day and end
         # start day)
         while (len(eventList) and eventList[0]['s'] < startDateTime):
@@ -946,7 +948,7 @@ class gcalcli(object):
         startWeekDateTime = startDateTime
         endWeekDateTime = (startWeekDateTime + timedelta(days=7))
 
-        for i in range(count):
+        for i in range(int(count)):
 
             # create/print date line
             line = str(self.borderColor) + str(ART_VRT()) + str(CLR_NRM())
@@ -2225,9 +2227,10 @@ def search_events(query, start_date, end_date, cache, calendar, client_id, clien
 @click.option("--verbose", "-v", default=False, help="Show logs")
 @click.option("--tsv/--no-tsv", default=False, help="Show output using tab seperated values")
 def show_calendar_week(start_date, end_date, cache, calendar, client_id, client_secret, color, set_color,
-                  config_folder, conky,
-                  default_calendar, details, include_config, lineart, user_locale, military, monday, refresh, started,
-                  verbose, tsv):
+                       config_folder, conky,
+                       default_calendar, details, include_config, lineart, user_locale, military, monday, refresh,
+                       started,
+                       verbose, tsv):
     """Shows the current agenda. Uses the default calendar unless otherwise specified"""
 
     calNames, calNameColors = setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar)
@@ -2243,6 +2246,53 @@ def show_calendar_week(start_date, end_date, cache, calendar, client_id, client_
         gcal.TextQuery("calw", start_date, end_date)
     else:
         raise click.BadParameter("--start-date should be used alongside --end-date!")
+
+
+@click.command("calm")
+@click.option("--start-date", "-s", default=None, help="The starting date to start searching events from")
+@click.option("--weeks", "-w", default=1, help="The ending date to start searching events to")
+@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
+@click.option("--calendar", default=[], help="Which calendars to use;" +
+                                             "repeat this option to specify a list of values")
+@click.option("--client-id", default=None, help="API client_id")
+@click.option("--client-secret", default=None, help="API client_secret")
+@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
+@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
+@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
+@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
+@click.option("--default-calendar", default=[],
+              help="Optional default calendar to use if no --calendar options are given; " +
+                   "repeat this this option to speciy a list of values")
+@click.option("--details", type=click.Choice(["all", "calendar", "location", "length", "reminders",
+                                              "description", "longurl", "shorturl", "url", "attendees", "email"]),
+              multiple=True,
+              help="Which parts to display. Repeat this option to specify a list of values")
+@click.option("--include-config/--no-include-config", default=False,
+              help="Whether to include ~/.gcalclirc when using --config-folder")
+@click.option("--lineart/--no-lineart", default=True, help="Enable/Disable line art")
+@click.option("--locale", "user_locale", default=None, help="System locale")
+@click.option("--military/--no-military", default=False, help="Use 24 hour display")
+@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
+@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
+@click.option("--started/--no-started", default=True, help="Show events that have started")
+@click.option("--verbose", "-v", default=False, help="Show logs")
+@click.option("--tsv/--no-tsv", default=False, help="Show output using tab seperated values")
+def show_calendar_month(start_date, weeks, cache, calendar, client_id, client_secret, color, set_color,
+                        config_folder, conky,
+                        default_calendar, details, include_config, lineart, user_locale, military, monday, refresh,
+                        started,
+                        verbose, tsv):
+    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
+
+    calNames, calNameColors = setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar)
+    gcal = gcalcli(calNames=calNames,
+                   calNameColors=calNameColors)
+    gcal.load()
+
+    if start_date is None:
+        gcal.CalQuery("calm", count=weeks)
+    else:
+        gcal.CalQuery("calm", count=weeks, startText=start_date)
 
 
 def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
@@ -2292,6 +2342,7 @@ gcal.add_command(show_agenda)
 gcal.add_command(list_calendars)
 gcal.add_command(search_events)
 gcal.add_command(show_calendar_week)
+gcal.add_command(show_calendar_month)
 
 signal.signal(signal.SIGINT, SIGINT_handler)
 
