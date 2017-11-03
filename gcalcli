@@ -1,75 +1,10 @@
 #!/usr/bin/env python
 
-# ** The MIT License **
-#
-# Copyright (c) 2007 Eric Davis (aka Insanum)
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
-# Dude... just buy us a beer. :-)
-#
-
-# XXX Todo/Cleanup XXX
-# threading is currently broken when getting event list
-# if threading works then move pageToken processing from GetAllEvents to thread
-# support different types of reminders plus multiple ones (popup, sms, email)
-# add caching, should be easy (dump all calendar JSON data to file)
-# add support for multiline description input in the 'add' and 'edit' commands
-# maybe add support for freebusy ?
-
-#############################################################################
-#                                                                           #
-#                                      (           (     (                  #
-#               (         (     (      )\ )   (    )\ )  )\ )               #
-#               )\ )      )\    )\    (()/(   )\  (()/( (()/(               #
-#              (()/(    (((_)((((_)(   /(_))(((_)  /(_)) /(_))              #
-#               /(_))_  )\___ )\ _ )\ (_))  )\___ (_))  (_))                #
-#              (_)) __|((/ __|(_)_\(_)| |  ((/ __|| |   |_ _|               #
-#                | (_ | | (__  / _ \  | |__ | (__ | |__  | |                #
-#                 \___|  \___|/_/ \_\ |____| \___||____||___|               #
-#                                                                           #
-# Author: Eric Davis <http://www.insanum.com>                               #
-#         Brian Hartvigsen <http://github.com/tresni>                       #
-# Home: https://github.com/insanum/gcalcli                                  #
-#                                                                           #
-# Requirements:                                                             #
-#  - Python 2                                                               #
-#        http://www.python.org                                              #
-#  - Google APIs Client Library for Python 2                                #
-#        https://developers.google.com/api-client-library/python            #
-#  - dateutil Python 2 module                                               #
-#        http://www.labix.org/python-dateutil                               #
-#                                                                           #
-# Optional:                                                                 #
-#  - vobject Python module (needed for importing ics/vcal files)            #
-#        http://vobject.skyhouseconsulting.com                              #
-#  - parsedatetime Python module (needed for fuzzy date parsing)            #
-#        https://github.com/bear/parsedatetime                              #
-#                                                                           #
-# Everything you need to know (Google API Calendar v3): http://goo.gl/HfTGQ #
-#                                                                           #
-#############################################################################
 import argparse
 
 __program__ = 'gcalcli'
-__version__ = 'v3.4.0'
-__author__ = 'Eric Davis, Brian Hartvigsen'
+__version__ = 'v4.0.0-alpha'
+__author__ = 'Jordan Knott, Eric Davis, Brian Hartvigsen'
 __doc__ = '''
 Usage:
 
@@ -182,6 +117,7 @@ import textwrap
 import signal
 import json
 import random
+import click
 from datetime import datetime, timedelta, date
 from unicodedata import east_asian_width
 from builtins import str, range
@@ -189,6 +125,7 @@ from past.builtins import cmp, raw_input
 
 # Required 3rd party libraries
 try:
+    from attr import attrs, attrib, Factory
     from dateutil.tz import tzlocal
     from dateutil.parser import parse
     import gflags
@@ -512,6 +449,7 @@ def ParseReminder(rem):
     return n, m
 
 
+@attrs()
 class gcalcli:
     cache = {}
     allCals = []
@@ -533,98 +471,63 @@ class gcalcli:
 
     UNIWIDTH = {'W': 2, 'F': 2, 'N': 1, 'Na': 1, 'H': 1, 'A': 1}
 
-    def __init__(self,
-                 calNames=[],
-                 calNameColors=[],
-                 military=False,
-                 detailCalendar=False,
-                 detailLocation=False,
-                 detailAttendees=False,
-                 detailAttachments=False,
-                 detailLength=False,
-                 detailReminders=False,
-                 detailDescr=False,
-                 detailDescrWidth=80,
-                 detailUrl=None,
-                 detailEmail=False,
-                 ignoreStarted=False,
-                 ignoreDeclined=False,
-                 calWidth=10,
-                 calMonday=False,
-                 calOwnerColor=CLR_CYN(),
-                 calWriterColor=CLR_GRN(),
-                 calReaderColor=CLR_MAG(),
-                 calFreeBusyColor=CLR_NRM(),
-                 dateColor=CLR_YLW(),
-                 nowMarkerColor=CLR_BRRED(),
-                 borderColor=CLR_WHT(),
-                 tsv=False,
-                 refreshCache=False,
-                 useCache=True,
-                 configFolder=None,
-                 client_id=__API_CLIENT_ID__,
-                 client_secret=__API_CLIENT_SECRET__,
-                 defaultReminders=False,
-                 allDay=False):
+    calNames = attrib(default=Factory(list))
+    calNameColors = attrib(default=Factory(list))
+    calNameColors = attrib(default=Factory(list))
+    military = attrib(default=False)
+    detailCalendar = attrib(False)
+    detailLocation = attrib(default=False)
+    detailAttendees = attrib(default=False)
+    detailAttachments = attrib(default=False)
+    detailLength = attrib(default=False)
+    detailReminders = attrib(default=False)
+    detailDescr = attrib(default=False)
+    detailDescrWidth = attrib(default=80)
+    detailUrl = attrib(default=None)
+    detailEmail = attrib(default=False)
+    ignoreStarted = attrib(default=False)
+    ignoreDeclined = attrib(default=False)
+    calWidth = attrib(default=10)
+    calMonday = attrib(default=False)
+    calOwnerColor = attrib(default=CLR_CYN())
+    calWriterColor = attrib(default=CLR_GRN())
+    calReaderColor = attrib(default=CLR_MAG())
+    calFreeBusyColor = attrib(default=CLR_NRM())
+    dateColor = attrib(default=CLR_YLW())
+    nowMarkerColor = attrib(default=CLR_BRRED())
+    borderColor = attrib(default=CLR_WHT())
+    tsv = attrib(default=False)
+    refreshCache = attrib(default=False)
+    useCache = attrib(default=True)
+    configFolder = attrib(default=None)
+    client_id = attrib(default=__API_CLIENT_ID__)
+    client_secret = attrib(default=__API_CLIENT_SECRET__)
+    defaultReminders = attrib(default=False)
+    allDay = attrib(False)
 
-        self.military = military
-        self.ignoreStarted = ignoreStarted
-        self.ignoreDeclined = ignoreDeclined
-        self.calWidth = calWidth
-        self.calMonday = calMonday
-        self.tsv = tsv
-        self.refreshCache = refreshCache
-        self.useCache = useCache
-        self.defaultReminders = defaultReminders
-        self.allDay = allDay
-
-        self.detailCalendar = detailCalendar
-        self.detailLocation = detailLocation
-        self.detailLength = detailLength
-        self.detailReminders = detailReminders
-        self.detailDescr = detailDescr
-        self.detailDescrWidth = detailDescrWidth
-        self.detailUrl = detailUrl
-        self.detailAttendees = detailAttendees
-        self.detailAttachments = detailAttachments
-        self.detailEmail = detailEmail
-
-        self.calOwnerColor = calOwnerColor
-        self.calWriterColor = calWriterColor
-        self.calReaderColor = calReaderColor
-        self.calFreeBusyColor = calFreeBusyColor
-        self.dateColor = dateColor
-        self.nowMarkerColor = nowMarkerColor
-        self.borderColor = borderColor
-
-        self.configFolder = configFolder
-
-        self.client_id = client_id
-        self.client_secret = client_secret
-
+    def __attrs_post_init__(self):
         self._GetCached()
-
-        if len(calNames):
+        if len(self.calNames):
             # Changing the order of this and the `cal in self.allCals` loop
             # is necessary for the matching to actually be sane (ie match
             # supplied name to cached vs matching cache against supplied names)
-            for i in range(len(calNames)):
+            for i in range(len(self.calNames)):
                 matches = []
                 for cal in self.allCals:
                     # For exact match, we should match only 1 entry and accept
                     # the first entry.  Should honor access role order since
                     # it happens after _GetCached()
-                    if calNames[i] == cal['summary']:
+                    if self.calNames[i] == cal['summary']:
                         # This makes sure that if we have any regex matches
                         # that we toss them out in favor of the specific match
                         matches = [cal]
-                        cal['colorSpec'] = calNameColors[i]
+                        cal['colorSpec'] = self.calNameColors[i]
                         break
                     # Otherwise, if the calendar matches as a regex, append
                     # it to the list of potential matches
-                    elif re.search(calNames[i], cal['summary'], flags=re.I):
+                    elif re.search(self.calNames[i], cal['summary'], flags=re.I):
                         matches.append(cal)
-                        cal['colorSpec'] = calNameColors[i]
+                        cal['colorSpec'] = self.calNameColors[i]
                 # Add relevant matches to the list of calendars we want to
                 # operate against
                 self.cals += matches
@@ -744,7 +647,6 @@ class gcalcli:
                  self.ACCESS_WRITER: 2,
                  self.ACCESS_READER: 3,
                  self.ACCESS_FREEBUSY: 4}
-
 
         if self.useCache:
             self.cache['allCals'] = self.allCals
@@ -2163,6 +2065,8 @@ def GetCalColors(calNames):
                 calColor = calColorNew
         calColors[calNameSimple] = calColor
     return calColors
+
+
 FLAGS = {}
 gflags = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -2178,14 +2082,14 @@ gflags.add_argument("--client_secret", default=__API_CLIENT_SECRET__, type=str,
                     help="API client_secret")
 gflags.add_argument("--configFolder", default=None, type=str,
                     help="Optional directory to load/store all configuration "
-                    "information")
+                         "information")
 gflags.add_argument("--noincluderc", action="store_false", dest="includeRc",
                     help="Whether to include ~/.gcalclirc when using configFolder")
 gflags.add_argument("--calendar", default=[], type=str, action="append",
                     help="Which calendars to use")
 gflags.add_argument("--defaultCalendar", default=[], type=str, action="append",
                     help="Optional default calendar to use if no --calendar "
-                    "options are given")
+                         "options are given")
 gflags.add_argument("--locale", default=None, type=str, help="System locale")
 gflags.add_argument("--refresh", action="store_true", help="Delete and refresh cached data")
 gflags.add_argument("--nocache", action="store_false", dest="cache",
@@ -2202,9 +2106,9 @@ detailsParser.add_argument("--details", default=[], type=str, action="append",
                                     'reminders', 'description', 'longurl', 'shorturl',
                                     'url', 'attendees', 'email', 'attachments'],
                            help="Which parts to display, can be: "
-                           "'all', 'calendar', 'location', 'length', "
-                           "'reminders', 'description', 'longurl', 'shorturl', "
-                           "'url', 'attendees', 'email'")
+                                "'all', 'calendar', 'location', 'length', "
+                                "'reminders', 'description', 'longurl', 'shorturl', "
+                                "'url', 'attendees', 'email'")
 
 outputParser = argparse.ArgumentParser(add_help=False)
 outputParser.add_argument("--tsv", action="store_true", help="Use Tab Separated Value output")
@@ -2234,13 +2138,13 @@ colorParser.add_argument("--color_border", default="white", type=ValidColor,
 remindParser = argparse.ArgumentParser(add_help=False)
 remindParser.add_argument("--reminder", default=[], type=ValidReminder, action="append",
                           help="Reminders in the form 'TIME METH' or 'TIME'.  TIME "
-                          "is a number which may be followed by an optional "
-                          "'w', 'd', 'h', or 'm' (meaning weeks, days, hours, "
-                          "minutes) and default to minutes.  METH is a string "
-                          "'popup', 'email', or 'sms' and defaults to popup.")
+                               "is a number which may be followed by an optional "
+                               "'w', 'd', 'h', or 'm' (meaning weeks, days, hours, "
+                               "minutes) and default to minutes.  METH is a string "
+                               "'popup', 'email', or 'sms' and defaults to popup.")
 remindParser.add_argument("--default_reminders", action="store_true",
                           help="If no --reminder is given, use the defaults.  If this is "
-                          "false, do not create any reminders.")
+                               "false, do not create any reminders.")
 
 sub = gflags.add_subparsers(help="Sub command help?", dest="command")
 sub.required = True
@@ -2332,7 +2236,7 @@ def BowChickaWowWow():
         if not os.path.exists(os.path.expanduser(FLAGS.configFolder)):
             os.makedirs(os.path.expanduser(FLAGS.configFolder))
         if os.path.exists(os.path.expanduser("%s/gcalclirc" %
-                                             FLAGS.configFolder)):
+                                                     FLAGS.configFolder)):
             if not FLAGS.includeRc:
                 tmpArgv = ["@%s/gcalclirc" % FLAGS.configFolder, ] + argv
             else:
@@ -2359,7 +2263,7 @@ def BowChickaWowWow():
             locale.setlocale(locale.LC_ALL, FLAGS.locale)
         except Exception as e:
             PrintErrMsg("Error: " + str(e) + "!\n"
-                        "Check supported locales of your system.\n")
+                                             "Check supported locales of your system.\n")
             sys.exit(1)
 
     if len(FLAGS.calendar) == 0:
@@ -2476,7 +2380,6 @@ def BowChickaWowWow():
                           FLAGS.iamaexpert, eStart, eEnd)
 
         sys.stdout.write('\n')
-
     elif FLAGS.command == 'edit':
         if not FLAGS.text:
             PrintErrMsg('Error: invalid search string\n')
@@ -2497,6 +2400,7 @@ def BowChickaWowWow():
 def SIGINT_handler(signum, frame):
     PrintErrMsg('Signal caught, bye!\n')
     sys.exit(1)
+
 
 signal.signal(signal.SIGINT, SIGINT_handler)
 
