@@ -178,6 +178,17 @@ def validate_set_color(ctx, param, value):
     return value
 
 
+# reminder option validator
+def validate_reminder(ctx, param, value):
+    if value is False:
+        return value
+    for rem in value:
+        matchObj = re.match("^(\d+)([wdhm]?)(?:\s+(popup|email|sms))?$", rem)
+        if not matchObj:
+            raise click.BadParameter("Reminders should be in the form of 'TIME METH' or 'TIME'")
+    return value
+
+
 def Version():
     sys.stdout.write(__program__ + ' ' + __version__ + ' (' + __author__ + ')\n')
     sys.exit(1)
@@ -508,7 +519,7 @@ class gcalcli(object):
     configFolder = attr.ib(default=None)
     client_id = attr.ib(default=__API_CLIENT_ID__)
     client_secret = attr.ib(default=__API_CLIENT_SECRET__)
-    defaultReminders = attr.ib(default=False)
+    defaultReminders = attr.ib(default=True)
     allDay = attr.ib(False)
 
     def load(self):
@@ -523,6 +534,7 @@ class gcalcli(object):
                     # For exact match, we should match only 1 entry and accept
                     # the first entry.  Should honor access role order since
                     # it happens after _GetCached()
+                    print("comparing %s -> %s" % (self.calNames[i], cal['summary']))
                     if self.calNames[i] == cal['summary']:
                         # This makes sure that if we have any regex matches
                         # that we toss them out in favor of the specific match
@@ -2295,6 +2307,46 @@ def show_calendar_month(start_date, weeks, cache, calendar, client_id, client_se
         gcal.CalQuery("calm", count=weeks, startText=start_date)
 
 
+@click.command("quick")
+@click.argument("event-title")
+@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
+@click.option("--calendar", default=[], multiple=True, help="Which calendars to use;" +
+                                             "repeat this option to specify a list of values")
+@click.option("--client-id", default=None, help="API client_id")
+@click.option("--client-secret", default=None, help="API client_secret")
+@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
+@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
+@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
+@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
+@click.option("--default-calendar", default=[],
+              help="Optional default calendar to use if no --calendar options are given; " +
+                   "repeat this this option to speciy a list of values")
+@click.option("--include-config/--no-include-config", default=False,
+              help="Whether to include ~/.gcalclirc when using --config-folder")
+@click.option("--locale", "user_locale", default=None, help="System locale")
+@click.option("--military/--no-military", default=False, help="Use 24 hour display")
+@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
+@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
+@click.option("--started/--no-started", default=True, help="Show events that have started")
+@click.option("--verbose", "-v", default=False, help="Show logs")
+@click.option("--reminder", "-r", multiple=True, callback=validate_reminder, default=False,
+              help="Reminders in the form 'TIME METH' or 'TIME'.  TIME " +
+                   "is a number which may be followed by an optional " +
+                   "'w', 'd', 'h', or 'm' (meaning weeks, days, hours, " +
+                   "minutes) and default to minutes.  METH is a string " +
+                   "'popup', 'email', or 'sms' and defaults to popup.")
+def quick_add_event(event_title, cache, calendar, client_id, client_secret, color, set_color, config_folder, conky,
+                   default_calendar, include_config, user_locale, military, monday, refresh, started,
+                   verbose, reminder):
+    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
+
+    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
+    gcal = gcalcli(calNames=calendar,
+                   calNameColors=calNameColors)
+    gcal.load()
+    gcal.QuickAddEvent(str(event_title), reminder=reminder)
+
+
 def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
     if not color:
         CLR.useColor = False
@@ -2343,6 +2395,7 @@ gcal.add_command(list_calendars)
 gcal.add_command(search_events)
 gcal.add_command(show_calendar_week)
 gcal.add_command(show_calendar_month)
+gcal.add_command(quick_add_event)
 
 signal.signal(signal.SIGINT, SIGINT_handler)
 
