@@ -65,10 +65,10 @@
 # Everything you need to know (Google API Calendar v3): http://goo.gl/HfTGQ #
 #                                                                           #
 #############################################################################
-from __future__ import print_function
+import argparse
 
 __program__ = 'gcalcli'
-__version__ = 'v4.0.0a2'
+__version__ = 'v3.4.0'
 __author__ = 'Eric Davis, Brian Hartvigsen'
 __doc__ = '''
 Usage:
@@ -182,25 +182,32 @@ import textwrap
 import signal
 import json
 import random
-import argparse
 from datetime import datetime, timedelta, date
 from unicodedata import east_asian_width
+from builtins import str, range
+from past.builtins import cmp, raw_input
 
 # Required 3rd party libraries
 try:
     from dateutil.tz import tzlocal
     from dateutil.parser import parse
+    import gflags
     import httplib2
-    import six
-    from six.moves import range, zip, map, cPickle as pickle
     from apiclient.discovery import build
     from apiclient.errors import HttpError
     from oauth2client.file import Storage
     from oauth2client.client import OAuth2WebServerFlow
-    from oauth2client import tools
+    from oauth2client.tools import run
 except ImportError as e:
     print("ERROR: Missing module - %s" % e.args[0])
     sys.exit(1)
+
+# cPickle is a standard library, but in case someone did something really
+# dumb, fall back to pickle.  If that's not their, your python is fucked
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 # If they have parsedatetime, we'll use it for fuzzy datetime comparison.  If
 # not, we just return a fake failure every time and use only dateutil.
@@ -215,26 +222,29 @@ except:
 locale.setlocale(locale.LC_ALL, "")
 
 
-def _u(string):
-    encoding = locale.getlocale()[1] or locale.getpreferredencoding(False) or "UTF-8"
-    if issubclass(type(string), six.text_type):
-        return string
-    if not issubclass(type(string), six.string_types):
-        if six.PY3:
-            if isinstance(string, bytes):
-                return six.text_type(string, encoding, "replace")
-            else:
-                return six.text_type(string)
-        elif hasattr(string, '__unicode__'):
-            return six.text_type(string)
-        else:
-            return six.text_type(bytes(string), encoding, "replace")
-    else:
-        return string.decode(encoding, "replace")
+def stringToUnicode(string):
+    return str(string)
+
+
+def stringFromUnicode(string):
+    return string.encode(locale.getlocale()[1] or
+                         locale.getpreferredencoding(False) or
+                         "UTF-8", "replace")
+
+
+def Version():
+    sys.stdout.write(__program__ + ' ' + __version__ + ' (' + __author__ + ')\n')
+    sys.exit(1)
+
+
+def Usage(expanded=False):
+    sys.stdout.write(__doc__ % sys.argv[0])
+    if expanded:
+        print(FLAGS.MainModuleHelp())
+    sys.exit(1)
 
 
 class CLR:
-
     useColor = True
     conky = False
 
@@ -333,7 +343,6 @@ def SetConkyColors():
 
 
 class ART:
-
     useArt = True
     fancy = ''
     plain = ''
@@ -404,7 +413,7 @@ def PrintErrMsg(msg):
 def PrintMsg(color, msg):
     if CLR.useColor:
         sys.stdout.write(str(color))
-        sys.stdout.write(msg)
+        sys.stdout.write(str(msg))
         sys.stdout.write(str(CLR_NRM()))
     else:
         sys.stdout.write(msg)
@@ -459,7 +468,7 @@ def GetTimeFromStr(eWhen, eDuration=0):
         PrintErrMsg('Date and time is invalid!\n')
         sys.exit(1)
 
-    if 'allday' in FLAGS and FLAGS.allday:
+    if FLAGS.allday:
         try:
             eTimeStop = eTimeStart + timedelta(days=float(eDuration))
         except:
@@ -485,8 +494,8 @@ def GetTimeFromStr(eWhen, eDuration=0):
 def ParseReminder(rem):
     matchObj = re.match(r'^(\d+)([wdhm]?)(?:\s+(popup|email|sms))?$', rem)
     if not matchObj:
-        # Allow argparse to generate a message when parsing options
-        return None
+        PrintErrMsg('Invalid reminder: ' + rem + '\n')
+        sys.exit(1)
     n = int(matchObj.group(1))
     t = matchObj.group(2)
     m = matchObj.group(3)
@@ -504,7 +513,6 @@ def ParseReminder(rem):
 
 
 class gcalcli:
-
     cache = {}
     allCals = []
     allEvents = []
@@ -528,61 +536,71 @@ class gcalcli:
     def __init__(self,
                  calNames=[],
                  calNameColors=[],
-                 options={}):
+                 military=False,
+                 detailCalendar=False,
+                 detailLocation=False,
+                 detailAttendees=False,
+                 detailAttachments=False,
+                 detailLength=False,
+                 detailReminders=False,
+                 detailDescr=False,
+                 detailDescrWidth=80,
+                 detailUrl=None,
+                 detailEmail=False,
+                 ignoreStarted=False,
+                 ignoreDeclined=False,
+                 calWidth=10,
+                 calMonday=False,
+                 calOwnerColor=CLR_CYN(),
+                 calWriterColor=CLR_GRN(),
+                 calReaderColor=CLR_MAG(),
+                 calFreeBusyColor=CLR_NRM(),
+                 dateColor=CLR_YLW(),
+                 nowMarkerColor=CLR_BRRED(),
+                 borderColor=CLR_WHT(),
+                 tsv=False,
+                 refreshCache=False,
+                 useCache=True,
+                 configFolder=None,
+                 client_id=__API_CLIENT_ID__,
+                 client_secret=__API_CLIENT_SECRET__,
+                 defaultReminders=False,
+                 allDay=False):
 
-        def hasOption(option, default):
-            return vars(options)[option] if option in options else default
+        self.military = military
+        self.ignoreStarted = ignoreStarted
+        self.ignoreDeclined = ignoreDeclined
+        self.calWidth = calWidth
+        self.calMonday = calMonday
+        self.tsv = tsv
+        self.refreshCache = refreshCache
+        self.useCache = useCache
+        self.defaultReminders = defaultReminders
+        self.allDay = allDay
 
-        def hasColor(option, default):
-            color = hasOption(option, False)
-            if not color:
-                return default
-            return GetColor(color)
+        self.detailCalendar = detailCalendar
+        self.detailLocation = detailLocation
+        self.detailLength = detailLength
+        self.detailReminders = detailReminders
+        self.detailDescr = detailDescr
+        self.detailDescrWidth = detailDescrWidth
+        self.detailUrl = detailUrl
+        self.detailAttendees = detailAttendees
+        self.detailAttachments = detailAttachments
+        self.detailEmail = detailEmail
 
-        def hasDetail(option):
-            if 'details' in options and (option in options.details
-                                         or 'all' in options.details):
-                return True
-            else:
-                return False
+        self.calOwnerColor = calOwnerColor
+        self.calWriterColor = calWriterColor
+        self.calReaderColor = calReaderColor
+        self.calFreeBusyColor = calFreeBusyColor
+        self.dateColor = dateColor
+        self.nowMarkerColor = nowMarkerColor
+        self.borderColor = borderColor
 
-        self.military = hasOption('military', False)
-        self.ignoreStarted = not hasOption('started', True)
-        self.ignoreDeclined = not hasOption('declined', True)
-        self.calWidth = hasOption('width', 10)
-        self.calMonday = hasOption('monday', False)
-        self.calWeekend = hasOption('noweekend', True)
-        self.tsv = hasOption('tsv', False)
-        self.refreshCache = hasOption('refresh', False)
-        self.useCache = hasOption('cache', True)
-        self.defaultReminders = hasOption('default_reminders', False)
-        self.allDay = hasOption('allday', False)
+        self.configFolder = configFolder
 
-        self.detailCalendar = hasDetail('calendar')
-        self.detailLocation = hasDetail('location')
-        self.detailLength = hasDetail('length')
-        self.detailReminders = hasDetail('reminders')
-        self.detailDescr = hasDetail('description')
-        self.detailDescrWidth = hasOption('width', 80)
-        self.detailUrl = 'short' if hasDetail('shorturl') else \
-                         'long' if hasDetail('longurl') or hasDetail('url') \
-                         else None
-        self.detailAttendees = hasDetail('attendees')
-        self.detailEmail = hasDetail('email')
-        self.detailAttachments = hasDetail('attachements')
-
-        self.calOwnerColor = hasColor('color_owner', CLR_CYN())
-        self.calWriterColor = hasColor('color_writer', CLR_GRN())
-        self.calReaderColor = hasColor('color_reader', CLR_MAG())
-        self.calFreeBusyColor = hasColor('color_freebusy', CLR_NRM())
-        self.dateColor = hasColor('color_date', CLR_YLW())
-        self.nowMarkerColor = hasColor('color_now_marker', CLR_BRRED())
-        self.borderColor = hasColor('color_border', CLR_WHT())
-
-        self.configFolder = hasOption('configFolder', None)
-
-        self.client_id = hasOption('client_id', __API_CLIENT_ID__)
-        self.client_secret = hasOption('client_secret', __API_CLIENT_SECRET__)
+        self.client_id = client_id
+        self.client_secret = client_secret
 
         self._GetCached()
 
@@ -628,10 +646,9 @@ class gcalcli:
                 return method.execute()
             except HttpError as e:
                 error = json.loads(e.content)
-                error = error.get('error')
                 if error.get('code') == '403' and \
-                        error.get('errors')[0].get('reason') \
-                        in ['rateLimitExceeded', 'userRateLimitExceeded']:
+                                error.get('errors')[0].get('reason') \
+                                in ['rateLimitExceeded', 'userRateLimitExceeded']:
                     time.sleep((2 ** n) + random.random())
                 else:
                     raise
@@ -648,15 +665,14 @@ class gcalcli:
             credentials = storage.get()
 
             if credentials is None or credentials.invalid:
-                credentials = tools.run_flow(
+                credentials = run(
                     OAuth2WebServerFlow(
                         client_id=self.client_id,
                         client_secret=self.client_secret,
                         scope=['https://www.googleapis.com/auth/calendar',
                                'https://www.googleapis.com/auth/urlshortener'],
                         user_agent=__program__ + '/' + __version__),
-                    storage,
-                    FLAGS)
+                    storage)
 
             self.authHttp = credentials.authorize(httplib2.Http())
 
@@ -723,7 +739,12 @@ class gcalcli:
             else:
                 break
 
-        self.allCals.sort(key=lambda x: x['accessRole'])
+        # gcalcli defined way to order calendars
+        order = {self.ACCESS_OWNER: 1,
+                 self.ACCESS_WRITER: 2,
+                 self.ACCESS_READER: 3,
+                 self.ACCESS_FREEBUSY: 4}
+
 
         if self.useCache:
             self.cache['allCals'] = self.allCals
@@ -764,7 +785,7 @@ class gcalcli:
 
     def _IsAllDay(self, event):
         return event['s'].hour == 0 and event['s'].minute == 0 and \
-            event['e'].hour == 0 and event['e'].minute == 0
+               event['e'].hour == 0 and event['e'].minute == 0
 
     def _GetWeekEventStrings(self, cmd, curMonth,
                              startDateTime, endDateTime, eventList):
@@ -787,25 +808,11 @@ class gcalcli:
                 if dayNum < 0:
                     dayNum = 6
 
-            allDay = self._IsAllDay(event)
-
-            # NOTE(slawqo): in allDay events end date is always set as day+1 and
-            # hour 0:00 so to not display it one day more, it's necessary to
-            # lower it by one day:
-            if allDay:
-                eventEndDate = event['e'] - timedelta(days=1)
-            else:
-                eventEndDate = event['e']
-
-            # NOTE(slawqo): it's necessary to process events which starts in
-            # current period of time but for all day events also to process
-            # events which was started before current period of time and are
-            # still continue in current period of time
-            if ((event['s'] >= startDateTime and event['s'] < endDateTime) or
-                (allDay and event['s'] < startDateTime and
-                    eventEndDate >= startDateTime)):
+            if event['s'] >= startDateTime and event['s'] < endDateTime:
 
                 forceEventColorAsMarker = False
+
+                allDay = self._IsAllDay(event)
 
                 if not nowMarkerPrinted:
                     if (DaysSinceEpoch(self.now) <
@@ -828,7 +835,7 @@ class gcalcli:
                     # all day events for specific coloring but not for previous
                     # or next events
                     elif self.now >= event['s'] and \
-                            self.now <= eventEndDate and \
+                                    self.now <= event['e'] and \
                             not allDay:
                         # line marker is during the event (recolor event)
                         nowMarkerPrinted = True
@@ -848,36 +855,13 @@ class gcalcli:
                 else:
                     eventColor = self._CalendarColor(event['gcalcli_cal'])
 
-                # NOTE(slawqo): for all day events it's necessary to add event
-                # to more than one day in weekEventStrings
-                if allDay and event['s'] < eventEndDate:
-                    if eventEndDate > endDateTime:
-                        endDayNum = 6
-                    else:
-                        endDayNum = int(eventEndDate.strftime("%w"))
-                        if self.calMonday:
-                            endDayNum -= 1
-                            if endDayNum < 0:
-                                endDayNum = 6
-                    if dayNum > endDayNum:
-                        dayNum = 0
-                    for day in range(dayNum, endDayNum + 1):
-                        # newline and empty string are the keys to turn off
-                        # coloring
-                        weekEventStrings[day] += \
-                            "\n" + \
-                            _u(eventColor) + \
-                            _u(tmpTimeStr.strip()) + \
-                            " " + \
-                            _u(self._ValidTitle(event).strip())
-                else:
-                    # newline and empty string are the keys to turn off coloring
-                    weekEventStrings[dayNum] += \
-                        "\n" + \
-                        _u(eventColor) + \
-                        _u(tmpTimeStr.strip()) + \
-                        " " + \
-                        _u(self._ValidTitle(event).strip())
+                # newline and empty string are the keys to turn off coloring
+                weekEventStrings[dayNum] += \
+                    "\n" + \
+                    stringToUnicode(str(eventColor)) + \
+                    stringToUnicode(tmpTimeStr.strip()) + \
+                    " " + \
+                    self._ValidTitle(event).strip()
 
         return weekEventStrings
 
@@ -886,8 +870,9 @@ class gcalcli:
         # us the info we want.  Date string were coming in as `str` type
         # so we convert them to unicode and then check their size. Fixes
         # the output issues we were seeing around non-US locale strings
+        string = stringToUnicode(string)
         printLen = 0
-        for tmpChar in _u(string):
+        for tmpChar in string:
             printLen += self.UNIWIDTH[east_asian_width(tmpChar)]
         return printLen
 
@@ -895,14 +880,14 @@ class gcalcli:
     def _NextCut(self, string, curPrintLen):
         idx = 0
         printLen = 0
-        for tmpChar in _u(string):
-            printTmpChar = self.UNIWIDTH[east_asian_width(tmpChar)]
-            if (curPrintLen + printLen + printTmpChar) > self.calWidth:
+        string = stringToUnicode(string)
+        for tmpChar in string:
+            if (curPrintLen + printLen) >= self.calWidth:
                 return (printLen, idx, True)
             if tmpChar in (' ', '\n'):
                 return (printLen, idx, False)
             idx += 1
-            printLen += printTmpChar
+            printLen += self.UNIWIDTH[east_asian_width(tmpChar)]
         return (printLen, -1, False)
 
     def _GetCutIndex(self, eventString):
@@ -935,8 +920,8 @@ class gcalcli:
                        (cutWidth, cut, eventString[cut:]))
 
             while cut < self.calWidth and \
-                    cut < printLen and \
-                    eventString[cut] == ' ':
+                            cut < printLen and \
+                            eventString[cut] == ' ':
                 DebugPrint("-> skipping space <-\n")
                 cutWidth += 1
                 cut += 1
@@ -971,22 +956,19 @@ class gcalcli:
 
         dayWidthLine = (self.calWidth * str(ART_HRZ()))
 
-        dayNums = range(7) if self.calWeekend else range(1,6)
-        days = len(dayNums)
-
         topWeekDivider = (str(self.borderColor) +
                           str(ART_ULC()) + dayWidthLine +
-                          ((days - 1) * (str(ART_UTE()) + dayWidthLine)) +
+                          (6 * (str(ART_UTE()) + dayWidthLine)) +
                           str(ART_URC()) + str(CLR_NRM()))
 
         midWeekDivider = (str(self.borderColor) +
                           str(ART_LTE()) + dayWidthLine +
-                          ((days - 1) * (str(ART_CRS()) + dayWidthLine)) +
+                          (6 * (str(ART_CRS()) + dayWidthLine)) +
                           str(ART_RTE()) + str(CLR_NRM()))
 
         botWeekDivider = (str(self.borderColor) +
                           str(ART_LLC()) + dayWidthLine +
-                          ((days - 1) * (str(ART_BTE()) + dayWidthLine)) +
+                          (6 * (str(ART_BTE()) + dayWidthLine)) +
                           str(ART_LRC()) + str(CLR_NRM()))
 
         empty = self.calWidth * ' '
@@ -996,7 +978,7 @@ class gcalcli:
         dayNames = dayNames[6:] + dayNames[:6]
 
         dayHeader = str(self.borderColor) + str(ART_VRT()) + str(CLR_NRM())
-        for i in dayNums:
+        for i in range(7):
             if self.calMonday:
                 if i == 6:
                     dayName = dayNames[0]
@@ -1007,17 +989,17 @@ class gcalcli:
             dayName += ' ' * (self.calWidth - self._PrintLen(dayName))
             dayHeader += str(self.dateColor) + dayName + str(CLR_NRM())
             dayHeader += str(self.borderColor) + str(ART_VRT()) + \
-                str(CLR_NRM())
+                         str(CLR_NRM())
 
         if cmd == 'calm':
             topMonthDivider = (str(self.borderColor) +
                                str(ART_ULC()) + dayWidthLine +
-                               ((days - 1) * (str(ART_HRZ()) + dayWidthLine)) +
+                               (6 * (str(ART_HRZ()) + dayWidthLine)) +
                                str(ART_URC()) + str(CLR_NRM()))
             PrintMsg(CLR_NRM(), "\n" + topMonthDivider + "\n")
 
             m = startDateTime.strftime('%B %Y')
-            mw = (self.calWidth * days) + (days - 1)
+            mw = (self.calWidth * 7) + 6
             m += ' ' * (mw - self._PrintLen(m))
             PrintMsg(CLR_NRM(),
                      str(self.borderColor) +
@@ -1033,7 +1015,7 @@ class gcalcli:
 
             botMonthDivider = (str(self.borderColor) +
                                str(ART_LTE()) + dayWidthLine +
-                               ((days - 1) * (str(ART_UTE()) + dayWidthLine)) +
+                               (6 * (str(ART_UTE()) + dayWidthLine)) +
                                str(ART_RTE()) + str(CLR_NRM()))
             PrintMsg(CLR_NRM(), botMonthDivider + "\n")
 
@@ -1060,7 +1042,7 @@ class gcalcli:
 
             # create/print date line
             line = str(self.borderColor) + str(ART_VRT()) + str(CLR_NRM())
-            for j in dayNums:
+            for j in range(7):
                 if cmd == 'calw':
                     d = (startWeekDateTime +
                          timedelta(days=j)).strftime("%d %b")
@@ -1068,22 +1050,22 @@ class gcalcli:
                     d = (startWeekDateTime +
                          timedelta(days=j)).strftime("%d")
                     if curMonth != (startWeekDateTime +
-                                    timedelta(days=j)).strftime("%b"):
+                                        timedelta(days=j)).strftime("%b"):
                         d = ''
                 tmpDateColor = self.dateColor
 
                 if self.now.strftime("%d%b%Y") == \
-                   (startWeekDateTime + timedelta(days=j)).strftime("%d%b%Y"):
+                        (startWeekDateTime + timedelta(days=j)).strftime("%d%b%Y"):
                     tmpDateColor = self.nowMarkerColor
                     d += " **"
 
                 d += ' ' * (self.calWidth - self._PrintLen(d))
                 line += str(tmpDateColor) + \
-                    d + \
-                    str(CLR_NRM()) + \
-                    str(self.borderColor) + \
-                    str(ART_VRT()) + \
-                    str(CLR_NRM())
+                        d + \
+                        str(CLR_NRM()) + \
+                        str(self.borderColor) + \
+                        str(ART_VRT()) + \
+                        str(CLR_NRM())
             PrintMsg(CLR_NRM(), line + "\n")
 
             weekColorStrings = ['', '', '', '', '', '', '']
@@ -1101,9 +1083,9 @@ class gcalcli:
                 done = True
                 line = str(self.borderColor) + str(ART_VRT()) + str(CLR_NRM())
 
-                for j in dayNums:
+                for j in range(7):
 
-                    if not weekEventStrings[j]:
+                    if weekEventStrings[j] == '':
                         weekColorStrings[j] = ''
                         line += (empty +
                                  str(self.borderColor) +
@@ -1116,8 +1098,8 @@ class gcalcli:
                             (CLR.conky and weekEventStrings[j][0] == '$')):
                         weekColorStrings[j] = ''
                         while ((not CLR.conky and
-                                weekEventStrings[j][0] != 'm') or
-                                (CLR.conky and weekEventStrings[j][0] != '}')):
+                                        weekEventStrings[j][0] != 'm') or
+                                   (CLR.conky and weekEventStrings[j][0] != '}')):
                             weekColorStrings[j] += weekEventStrings[j][0]
                             weekEventStrings[j] = weekEventStrings[j][1:]
                         weekColorStrings[j] += weekEventStrings[j][0]
@@ -1163,12 +1145,10 @@ class gcalcli:
         for event in eventList:
             if self.ignoreStarted and (event['s'] < self.now):
                 continue
-            if self.ignoreDeclined and self._DeclinedEvent(event):
-                continue
-            output = "%s\t%s\t%s\t%s" % (_u(event['s'].strftime('%Y-%m-%d')),
-                                         _u(event['s'].strftime('%H:%M')),
-                                         _u(event['e'].strftime('%Y-%m-%d')),
-                                         _u(event['e'].strftime('%H:%M')))
+            output = "%s\t%s\t%s\t%s" % (event['s'].strftime('%Y-%m-%d'),
+                                         event['s'].strftime('%H:%M'),
+                                         event['e'].strftime('%Y-%m-%d'),
+                                         event['e'].strftime('%H:%M'))
 
             if self.detailUrl:
                 output += "\t%s" % (self._ShortenURL(event['htmlLink'])
@@ -1176,25 +1156,25 @@ class gcalcli:
                 output += "\t%s" % (self._ShortenURL(event['hangoutLink'])
                                     if 'hangoutLink' in event else '')
 
-            output += "\t%s" % _u(self._ValidTitle(event).strip())
+            output += "\t%s" % self._ValidTitle(event).strip()
 
             if self.detailLocation:
-                output += "\t%s" % (_u(event['location'].strip())
+                output += "\t%s" % (event['location'].strip()
                                     if 'location' in event else '')
 
             if self.detailDescr:
-                output += "\t%s" % (_u(event['description'].strip())
+                output += "\t%s" % (event['description'].strip()
                                     if 'description' in event else '')
 
             if self.detailCalendar:
-                output += "\t%s" % _u(event['gcalcli_cal']['summary'].strip())
+                output += "\t%s" % event['gcalcli_cal']['summary'].strip()
 
             if self.detailEmail:
                 output += "\t%s" % (event['creator']['email'].strip()
                                     if 'email' in event['creator'] else '')
 
             output = "%s\n" % output.replace('\n', '''\\n''')
-            sys.stdout.write(_u(output))
+            sys.stdout.write(stringFromUnicode(output))
 
     def _PrintEvent(self, event, prefix):
 
@@ -1216,10 +1196,10 @@ class gcalcli:
                         singleLine = singleLine.ljust(self.detailDescrWidth,
                                                       ' ')
                         new_descr += singleLine[:len(indent)] + \
-                            str(ART_VRT()) + \
-                            singleLine[(len(indent) + 1):
-                                       (self.detailDescrWidth - 1)] + \
-                            str(ART_VRT()) + '\n'
+                                     str(ART_VRT()) + \
+                                     singleLine[(len(indent) + 1):
+                                     (self.detailDescrWidth - 1)] + \
+                                     str(ART_VRT()) + '\n'
                 else:
                     new_descr += wrapper.fill(line) + "\n"
             return new_descr.rstrip()
@@ -1243,18 +1223,20 @@ class gcalcli:
 
         happeningNow = event['s'] <= self.now <= event['e']
         allDay = self._IsAllDay(event)
-        eventColor = self.nowMarkerColor if happeningNow and not allDay \
-            else self._CalendarColor(event['gcalcli_cal'])
+        eventColor = self.nowMarkerColor if happeningNow and not allDay else self._CalendarColor(event['gcalcli_cal'])
 
         if allDay:
             fmt = '  ' + timeFormat + '  %s\n'
-            PrintMsg(eventColor, fmt % ('', _u(self._ValidTitle(event).strip())))
+            PrintMsg(eventColor, fmt % ('', self._ValidTitle(event).strip()))
         else:
             fmt = '  ' + timeFormat + '  %s\n'
-            PrintMsg(eventColor, fmt % (_u(tmpTimeStr), _u(self._ValidTitle(event).strip())))
+            PrintMsg(eventColor, fmt % (stringToUnicode(tmpTimeStr), self._ValidTitle(event).strip()))
 
         if self.detailCalendar:
-            xstr = "%s  Calendar: %s\n" % (detailsIndent, event['gcalcli_cal']['summary'])
+            xstr = "%s  Calendar: %s\n" % (
+                detailsIndent,
+                event['gcalcli_cal']['summary']
+            )
             PrintMsg(CLR_NRM(), xstr)
 
         if self.detailUrl and 'htmlLink' in event:
@@ -1268,8 +1250,8 @@ class gcalcli:
             PrintMsg(CLR_NRM(), xstr)
 
         if self.detailLocation and \
-           'location' in event and \
-           event['location'].strip():
+                        'location' in event and \
+                event['location'].strip():
             xstr = "%s  Location: %s\n" % (
                 detailsIndent,
                 event['location'].strip()
@@ -1284,7 +1266,7 @@ class gcalcli:
                 xstr = "%s    %s: <%s>\n" % (
                     detailsIndent,
                     event['organizer'].get('displayName', 'Not Provided')
-                                      .strip(),
+                        .strip(),
                     event['organizer'].get('email', 'Not Provided').strip()
                 )
                 PrintMsg(CLR_NRM(), xstr)
@@ -1327,8 +1309,8 @@ class gcalcli:
                     PrintMsg(CLR_NRM(), xstr)
 
         if self.detailEmail and \
-           'email' in event['creator'] and \
-           event['creator']['email'].strip():
+                        'email' in event['creator'] and \
+                event['creator']['email'].strip():
             xstr = "%s  Email: %s\n" % (
                 detailsIndent,
                 event['creator']['email'].strip()
@@ -1336,8 +1318,8 @@ class gcalcli:
             PrintMsg(CLR_NRM(), xstr)
 
         if self.detailDescr and \
-           'description' in event and \
-           event['description'].strip():
+                        'description' in event and \
+                event['description'].strip():
             descrIndent = detailsIndent + '  '
             box = True  # leave old non-box code for option later
             if box:
@@ -1362,7 +1344,7 @@ class gcalcli:
                 )
             else:
                 marker = descrIndent + '-' * \
-                    (self.detailDescrWidth - len(descrIndent))
+                                       (self.detailDescrWidth - len(descrIndent))
                 xstr = "%s  Description:\n%s\n%s\n%s\n" % (
                     detailsIndent,
                     marker,
@@ -1377,8 +1359,8 @@ class gcalcli:
         if self.iamaExpert:
             self._RetryWithBackoff(
                 self._CalService().events().
-                delete(calendarId=event['gcalcli_cal']['id'],
-                       eventId=event['id']))
+                    delete(calendarId=event['gcalcli_cal']['id'],
+                           eventId=event['id']))
             PrintMsg(CLR_RED(), "Deleted!\n")
             return
 
@@ -1391,8 +1373,8 @@ class gcalcli:
         elif val.lower() == 'y':
             self._RetryWithBackoff(
                 self._CalService().events().
-                delete(calendarId=event['gcalcli_cal']['id'],
-                       eventId=event['id']))
+                    delete(calendarId=event['gcalcli_cal']['id'],
+                           eventId=event['id']))
             PrintMsg(CLR_RED(), "Deleted!\n")
 
         elif val.lower() == 'q':
@@ -1409,10 +1391,10 @@ class gcalcli:
         while True:
 
             PrintMsg(CLR_MAG(), "Edit?\n" +
-                                "[N]o [s]ave [q]uit " +
-                                "[t]itle [l]ocation " +
-                                "[w]hen len[g]th " +
-                                "[r]eminder [d]escr: ")
+                     "[N]o [s]ave [q]uit " +
+                     "[t]itle [l]ocation " +
+                     "[w]hen len[g]th " +
+                     "[r]eminder [d]escr: ")
             val = raw_input()
 
             if not val or val.lower() == 'n':
@@ -1429,9 +1411,9 @@ class gcalcli:
 
                 self._RetryWithBackoff(
                     self._CalService().events().
-                    patch(calendarId=event['gcalcli_cal']['id'],
-                          eventId=event['id'],
-                          body=modEvent))
+                        patch(calendarId=event['gcalcli_cal']['id'],
+                              eventId=event['id'],
+                              body=modEvent))
                 PrintMsg(CLR_RED(), "Saved!\n")
                 return
 
@@ -1444,14 +1426,14 @@ class gcalcli:
                 val = raw_input()
                 if val.strip():
                     event['summary'] = \
-                        _u(val.strip())
+                        stringToUnicode(val.strip())
 
             elif val.lower() == 'l':
                 PrintMsg(CLR_MAG(), "Location: ")
                 val = raw_input()
                 if val.strip():
                     event['location'] = \
-                        _u(val.strip())
+                        stringToUnicode(val.strip())
 
             elif val.lower() == 'w':
                 PrintMsg(CLR_MAG(), "When: ")
@@ -1530,7 +1512,7 @@ class gcalcli:
                 val = raw_input()
                 if val.strip():
                     event['description'] = \
-                        _u(val.strip())
+                        stringToUnicode(val.strip())
 
             else:
                 PrintErrMsg('Error: invalid input\n')
@@ -1554,8 +1536,11 @@ class gcalcli:
 
             if self.ignoreStarted and (event['s'] < self.now):
                 continue
-            if self.ignoreDeclined and self._DeclinedEvent(event):
-                continue
+            if self.ignoreDeclined:
+                if 'attendees' in event:
+                    attendee = [a for a in event['attendees'] if a['email'] == event['gcalcli_cal']['id']][0]
+                    if attendee and attendee['responseStatus'] == 'declined':
+                        continue
 
             tmpDayStr = event['s'].strftime(dayFormat)
             prefix = None
@@ -1618,7 +1603,7 @@ class gcalcli:
             if pageToken:
                 events = self._RetryWithBackoff(
                     self._CalService().events().
-                    list(calendarId=cal['id'], pageToken=pageToken))
+                        list(calendarId=cal['id'], pageToken=pageToken))
             else:
                 break
 
@@ -1628,7 +1613,7 @@ class gcalcli:
 
         eventList = []
         for cal in self.cals:
-            work = self._CalService().events().\
+            work = self._CalService().events(). \
                 list(calendarId=cal['id'],
                      timeMin=start.isoformat() if start else None,
                      timeMax=end.isoformat() if end else None,
@@ -1637,17 +1622,7 @@ class gcalcli:
             events = self._RetryWithBackoff(work)
             eventList.extend(self._GetAllEvents(cal, events, end))
 
-        eventList.sort(key=lambda x: x['s'])
-
         return eventList
-
-    def _DeclinedEvent(self, event):
-        if 'attendees' in event:
-            attendee = [a for a in event['attendees']
-                        if a['email'] == event['gcalcli_cal']['id']][0]
-            if attendee and attendee['responseStatus'] == 'declined':
-                return True
-        return False
 
     def ListAllCalendars(self):
 
@@ -1670,38 +1645,10 @@ class gcalcli:
             PrintMsg(self._CalendarColor(cal),
                      format % (cal['accessRole'], cal['summary']))
 
-    def _ParseStartEnd(self, startText, endText):
-        start = None
-        end = None
-
-        if not startText:
-            start = self.now if self.ignoreStarted else None
-        else:
-            try:
-                start = self.dateParser.fromString(startText)
-            except:
-                raise Exception('Error: failed to parse start time\n')
-
-        if endText:
-            try:
-                end = self.dateParser.fromString(endText)
-            except:
-                raise Exception('Error: failed to parse end time\n')
-
-        return (start, end)
-
-    def _DisplayQueriedEvents(self, start, end, search=None, yearDate=False):
-        eventList = self._SearchForCalEvents(start, end, search)
-
-        if self.tsv:
-            self._tsv(start, eventList)
-        else:
-            self._IterateEvents(start, eventList, yearDate=yearDate)
-
     def TextQuery(self, searchText='', startText='', endText=''):
 
         # the empty string would get *ALL* events...
-        if not searchText:
+        if searchText == '':
             return
 
         # This is really just an optimization to the gcalendar api
@@ -1710,32 +1657,71 @@ class gcalcli:
         # TODO: Look at moving this into the _SearchForCalEvents
         #       Don't forget to clean up AgendaQuery too!
 
-        try:
-            start, end = self._ParseStartEnd(startText, endText)
-        except Exception as e:
-            PrintErrMsg(str(e))
-            return
+        if startText == '':
+            start = self.now if self.ignoreStarted else None
+        else:
+            try:
+                start = self.dateParser.fromString(startText)
+            except:
+                PrintErrMsg('Error: failed to parse start time\n')
+                return
 
-        self._DisplayQueriedEvents(start, end, searchText, True)
+        if endText == '':
+            end = None
+        else:
+            try:
+                end = self.dateParser.fromString(endText)
+            except:
+                PrintErrMsg('Error: failed to parse end time\n')
+                return
+
+        eventList = self._SearchForCalEvents(start, end, searchText)
+
+        if self.tsv:
+            self._tsv(self.now, eventList)
+        else:
+            self._IterateEvents(self.now, eventList, yearDate=True)
 
     def AgendaQuery(self, startText='', endText=''):
-        try:
-            start, end = self._ParseStartEnd(startText, endText)
-        except Exception as e:
-            PrintErrMsg(str(e))
-            return
 
-        if not start:
-            start = self.now.replace(hour=0, minute=0, second=0, microsecond=0)
+        if startText == '':
+            # convert now to midnight this morning and use for default
+            start = self.now.replace(hour=0,
+                                     minute=0,
+                                     second=0,
+                                     microsecond=0)
+        else:
+            try:
+                start = self.dateParser.fromString(startText)
+            except:
+                PrintErrMsg('Error: failed to parse start time\n')
+                return
 
-        if not end:
+        # Again optimizing calls to the api.  If we've been told to
+        # ignore started events, then it doesn't make ANY sense to
+        # search for things that may be in the past
+        if self.ignoreStarted and start < self.now:
+            start = self.now
+
+        if endText == '':
             end = (start + timedelta(days=self.agendaLength))
+        else:
+            try:
+                end = self.dateParser.fromString(endText)
+            except:
+                PrintErrMsg('Error: failed to parse end time\n')
+                return
 
-        self._DisplayQueriedEvents(start, end)
+        eventList = self._SearchForCalEvents(start, end, None)
+
+        if self.tsv:
+            self._tsv(start, eventList)
+        else:
+            self._IterateEvents(start, eventList, yearDate=False)
 
     def CalQuery(self, cmd, startText='', count=1):
 
-        if not startText:
+        if startText == '':
             # convert now to midnight this morning and use for default
             start = self.now.replace(hour=0,
                                      minute=0,
@@ -1774,7 +1760,7 @@ class gcalcli:
                 if offsetDays < 0:
                     offsetDays = 6
             totalDays = (daysInMonth + offsetDays)
-            count = int(totalDays / 7)
+            count = (totalDays / 7)
             if totalDays % 7:
                 count += 1
 
@@ -1784,7 +1770,7 @@ class gcalcli:
 
     def QuickAddEvent(self, eventText, reminder=None):
 
-        if not eventText:
+        if eventText == '':
             return
 
         if len(self.cals) > 1:
@@ -1792,10 +1778,8 @@ class gcalcli:
             return
 
         if len(self.cals) < 1:
-            PrintErrMsg("Calendar not specified or not found.\n"
-                        "If \"gcalcli list\" doesn't find the calendar you're trying to use,\n"
-                        "your cache file might be stale and you might need to remove it and try"
-                        "again\n")
+            PrintErrMsg(
+                "Calendar not specified or not found.\nIf \"gcalcli list\" doesn't find the calendar you're trying to use,\nyour cache file might be stale and you might need to remove it and try again\n")
             return
 
         newEvent = self._RetryWithBackoff(
@@ -1813,9 +1797,9 @@ class gcalcli:
 
             newEvent = self._RetryWithBackoff(
                 self._CalService().events().
-                patch(calendarId=self.cals[0]['id'],
-                      eventId=newEvent['id'],
-                      body=rem))
+                    patch(calendarId=self.cals[0]['id'],
+                          eventId=newEvent['id'],
+                          body=rem))
 
         if self.detailUrl:
             hLink = self._ShortenURL(newEvent['htmlLink'])
@@ -1828,7 +1812,7 @@ class gcalcli:
             return
 
         event = {}
-        event['summary'] = _u(eTitle)
+        event['summary'] = stringToUnicode(eTitle)
 
         if self.allDay:
             event['start'] = {'date': eStart}
@@ -1841,11 +1825,11 @@ class gcalcli:
                             'timeZone': self.cals[0]['timeZone']}
 
         if eWhere:
-            event['location'] = _u(eWhere)
+            event['location'] = stringToUnicode(eWhere)
         if eDescr:
-            event['description'] = _u(eDescr)
+            event['description'] = stringToUnicode(eDescr)
 
-        event['attendees'] = list(map(lambda w: {'email': _u(w)}, eWho))
+        event['attendees'] = map(lambda w: {'email': stringToUnicode(w)}, eWho)
 
         if reminder or not self.defaultReminders:
             event['reminders'] = {'useDefault': False,
@@ -1857,7 +1841,7 @@ class gcalcli:
 
         newEvent = self._RetryWithBackoff(
             self._CalService().events().
-            insert(calendarId=self.cals[0]['id'], body=event))
+                insert(calendarId=self.cals[0]['id'], body=event))
 
         if self.detailUrl:
             hLink = self._ShortenURL(newEvent['htmlLink'])
@@ -1866,7 +1850,7 @@ class gcalcli:
     def DeleteEvents(self, searchText='', expert=False, start=None, end=None):
 
         # the empty string would get *ALL* events...
-        if not searchText:
+        if searchText == '':
             return
 
         eventList = self._SearchForCalEvents(start, end, searchText)
@@ -1878,7 +1862,7 @@ class gcalcli:
     def EditEvents(self, searchText=''):
 
         # the empty string would get *ALL* events...
-        if not searchText:
+        if searchText == '':
             return
 
         eventList = self._SearchForCalEvents(None, None, searchText)
@@ -1912,8 +1896,8 @@ class gcalcli:
             # not sure if 'reminders' always in event
             if use_reminders and 'reminders' in event and 'overrides' in event['reminders']:
                 if all(event['s'] - timedelta(minutes=r['minutes']) > self.now
-                   for r in event['reminders']['overrides']):
-                    continue   # don't remind if all reminders haven't arrived yet
+                       for r in event['reminders']['overrides']):
+                    continue  # don't remind if all reminders haven't arrived yet
 
             if self.military:
                 tmpTimeStr = event['s'].strftime('%H:%M')
@@ -1923,9 +1907,9 @@ class gcalcli:
                     event['s'].strftime('%p').lower()
 
             message += '%s  %s\n' % \
-                       (tmpTimeStr, _u(self._ValidTitle(event).strip()))
+                       (tmpTimeStr, self._ValidTitle(event).strip())
 
-        if not message:
+        if message == '':
             return
 
         cmd = shlex.split(command)
@@ -1973,13 +1957,17 @@ class gcalcli:
                 DebugPrint("DTEND: %s\n" % ve.dtend.value.isoformat())
             if verbose:
                 if ve.dtstart.value:
-                    print("Start........%s" % ve.dtstart.value.isoformat())
+                    print("Start........%s" % \
+                          ve.dtstart.value.isoformat())
                 if ve.dtend.value:
-                    print("End..........%s" % ve.dtend.value.isoformat())
+                    print("End..........%s" % \
+                          ve.dtend.value.isoformat())
                 if ve.dtstart.value:
-                    print("Local Start..%s" % self._LocalizeDateTime(ve.dtstart.value))
+                    print("Local Start..%s" % \
+                          self._LocalizeDateTime(ve.dtstart.value))
                 if ve.dtend.value:
-                    print("Local End....%s" % self._LocalizeDateTime(ve.dtend.value))
+                    print("Local End....%s" % \
+                          self._LocalizeDateTime(ve.dtend.value))
 
             if hasattr(ve, 'rrule'):
 
@@ -2087,7 +2075,7 @@ class gcalcli:
 
         if icsFile:
             try:
-                f = file(icsFile)
+                f = open(icsFile)
             except Exception as e:
                 PrintErrMsg("Error: " + str(e) + "!\n")
                 sys.exit(1)
@@ -2112,8 +2100,8 @@ class gcalcli:
                 if not verbose:
                     newEvent = self._RetryWithBackoff(
                         self._CalService().events().
-                        insert(calendarId=self.cals[0]['id'],
-                               body=event))
+                            insert(calendarId=self.cals[0]['id'],
+                                   body=event))
                     hLink = self._ShortenURL(newEvent['htmlLink'])
                     PrintMsg(CLR_GRN(), 'New event added: %s\n' % hLink)
                     continue
@@ -2125,8 +2113,8 @@ class gcalcli:
                 if val.lower() == 'i':
                     newEvent = self._RetryWithBackoff(
                         self._CalService().events().
-                        insert(calendarId=self.cals[0]['id'],
-                               body=event))
+                            insert(calendarId=self.cals[0]['id'],
+                                   body=event))
                     hLink = self._ShortenURL(newEvent['htmlLink'])
                     PrintMsg(CLR_GRN(), 'New event added: %s\n' % hLink)
                 elif val.lower() == 'q':
@@ -2175,28 +2163,6 @@ def GetCalColors(calNames):
                 calColor = calColorNew
         calColors[calNameSimple] = calColor
     return calColors
-
-
-def ValidColor(value):
-    if not GetColor(value):
-        raise argparse.ArgumentTypeError("%s is not a valid color" % value)
-    else:
-        return value
-
-
-def ValidWidth(value):
-    if type(value) == int and value < 10:
-        raise argparse.ArgumentTypeError("Width must be a number >= 10")
-    else:
-        return int(value)
-
-
-def ValidReminder(value):
-    if not ParseReminder(value):
-        raise argparse.ArgumentTypeError("Not a valid reminder string: %s" % value)
-    else:
-        return value
-
 FLAGS = {}
 gflags = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
