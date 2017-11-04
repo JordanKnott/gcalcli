@@ -22,25 +22,24 @@ from . import colors
 
 
 def string_to_unicode(string):
+    """Converts a string to the unicode format"""
     return str(string)
 
 
 def string_from_unicode(string):
+    """Converts a string from unicode to a regular string"""
     return string.encode(locale.getlocale()[1] or
                          locale.getpreferredencoding(False) or
                          "UTF-8", "replace")
 
 
-def usage(expanded=False):
-    sys.stdout.write(__doc__ % sys.argv[0])
-    sys.exit(1)
-
-
 def print_err_msg(msg):
+    """Prints an error message"""
     print_msg(colors.ClrBrred(), msg)
 
 
 def print_msg(color, msg):
+    """Prints a message to the screen"""
     if colors.CLR.use_color:
         sys.stdout.write(str(color))
         sys.stdout.write(str(msg))
@@ -50,11 +49,13 @@ def print_msg(color, msg):
 
 
 def debug_print(msg):
+    """Debug message. TODO: replace with logbook"""
     return
     print_msg(colors.ClrYlw(), msg)
 
 
 def dprint(obj):
+    """Pretty print with fallback"""
     try:
         from pprint import pprint
         pprint(obj)
@@ -63,10 +64,14 @@ def dprint(obj):
 
 
 class DateTimeParser:
+    """Parses date & time strings to return datetime objects"""
+
     def __init__(self):
+        """Creates a new parser with the current calendar"""
         self.pdt_calendar = parsedatetime.Calendar()
 
     def from_string(self, e_when):
+        """Parses a date & time string and returns a datetime object using the local timezone"""
         default_date_time = datetime.now(tzlocal()).replace(hour=0,
                                                           minute=0,
                                                           second=0,
@@ -84,12 +89,13 @@ class DateTimeParser:
 
 
 def days_since_epoch(dt):
-    # Because I hate magic numbers
+    """The number of days since the Linux epoch"""
     __DAYS_IN_SECONDS__ = 24 * 60 * 60
-    return calendar.timegm(dt.timetuple()) / __DAYS_IN_SECONDS__
+    return int(calendar.timegm(dt.timetuple()) / __DAYS_IN_SECONDS__)
 
 
 def get_time_from_str(e_when, e_duration=0, allday=False):
+    """Gets the current time from string, using a DateTimeParser object"""
     dtp = DateTimeParser()
 
     try:
@@ -122,6 +128,7 @@ def get_time_from_str(e_when, e_duration=0, allday=False):
 
 
 def parse_reminder(rem):
+    """Parses a reminder string of the format 'TIME METHOD'"""
     match_obj = re.match(r'^(\d+)([wdhm]?)(?:\s+(popup|email|sms))?$', rem)
     if not match_obj:
         print_err_msg('Invalid reminder: ' + rem + '\n')
@@ -143,5 +150,6 @@ def parse_reminder(rem):
 
 
 def sigint_handler(signum, frame):
+    """A default interrupt handler"""
     print_err_msg('Signal caught, bye!\n')
     sys.exit(1)
