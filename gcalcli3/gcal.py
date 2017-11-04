@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import argparse
-
 __program__ = 'gcalcli'
 __version__ = 'v4.0.0-alpha'
 __author__ = 'Jordan Knott, Eric Davis, Brian Hartvigsen'
@@ -105,24 +103,23 @@ Usage:
 __API_CLIENT_ID__ = '232867676714.apps.googleusercontent.com'
 __API_CLIENT_SECRET__ = '3tZSxItw6_VnZMezQwC8lUqy'
 
+import json
+import shlex
 # These are standard libraries and should never fail
 import sys
-import os
-import re
-import shlex
-import time
-import calendar
-import locale
 import textwrap
-import signal
-import json
-import random
-import click
+import time
+from builtins import str, range
 from datetime import datetime, timedelta, date
 from unicodedata import east_asian_width
-from builtins import str, range
-from past.builtins import cmp, raw_input
-from . import art, validators, colors, utils
+
+import locale
+import os
+import random
+import re
+from past.builtins import raw_input
+
+from . import art, colors, utils
 
 # Required 3rd party libraries
 try:
@@ -262,8 +259,8 @@ class Gcalapi(object):
             except HttpError as e:
                 error = json.loads(e.content)
                 if error.get('code') == '403' and \
-                        error.get('errors')[0].get('reason') \
-                        in ['rateLimitExceeded', 'userRateLimitExceeded']:
+                                error.get('errors')[0].get('reason') \
+                                in ['rateLimitExceeded', 'userRateLimitExceeded']:
                     time.sleep((2 ** n) + random.random())
                 else:
                     raise
@@ -399,10 +396,10 @@ class Gcalapi(object):
 
     def __is_all_day(self, event):
         return event['s'].hour == 0 and event['s'].minute == 0 and \
-            event['e'].hour == 0 and event['e'].minute == 0
+               event['e'].hour == 0 and event['e'].minute == 0
 
     def __get_week_event_strings(self, cmd, cur_month,
-                             start_date_time, end_date_time, event_list):
+                                 start_date_time, end_date_time, event_list):
 
         week_event_strings = ['', '', '', '', '', '', '']
 
@@ -449,7 +446,7 @@ class Gcalapi(object):
                     # all day events for specific coloring but not for previous
                     # or next events
                     elif self.now >= event['s'] and \
-                        self.now <= event['e'] and \
+                                    self.now <= event['e'] and \
                             not all_day:
                         # line marker is during the event (recolor event)
                         now_marker_printed = True
@@ -520,11 +517,11 @@ class Gcalapi(object):
 
         cut_width, cut, force_cut = self.__next_cut(event_string, 0)
         utils.debug_print("------ cutWidth=%d cut=%d \"%s\"\n" %
-                         (cut_width, cut, event_string))
+                          (cut_width, cut, event_string))
 
         if force_cut:
             utils.debug_print("--- forceCut cutWidth=%d cut=%d\n" %
-                             (cut_width, cut))
+                              (cut_width, cut))
             return (cut_width, cut)
 
         utils.debug_print("--- looping\n")
@@ -532,24 +529,24 @@ class Gcalapi(object):
         while cut_width < self.cal_width:
 
             utils.debug_print("--- cutWidth=%d cut=%d \"%s\"\n" %
-                             (cut_width, cut, event_string[cut:]))
+                              (cut_width, cut, event_string[cut:]))
 
             while cut < self.cal_width and \
-                    cut < print_len and \
-                    event_string[cut] == ' ':
+                            cut < print_len and \
+                            event_string[cut] == ' ':
                 utils.debug_print("-> skipping space <-\n")
                 cut_width += 1
                 cut += 1
 
             utils.debug_print("--- cutWidth=%d cut=%d \"%s\"\n" %
-                             (cut_width, cut, event_string[cut:]))
+                              (cut_width, cut, event_string[cut:]))
 
             next_cut_width, next_cut, force_cut = \
                 self.__next_cut(event_string[cut:], cut_width)
 
             if force_cut:
                 utils.debug_print("--- forceCut cutWidth=%d cut=%d\n" % (cut_width,
-                                                                        cut))
+                                                                         cut))
                 break
 
             cut_width += next_cut_width
@@ -574,19 +571,19 @@ class Gcalapi(object):
         day_width_line = (self.cal_width * str(art.ArtHrz()))
 
         top_week_divider = (str(self.border_color) +
-                          str(art.ArtUlc()) + day_width_line +
-                          (6 * (str(art.ArtUte()) + day_width_line)) +
-                          str(art.ArtUrc()) + str(colors.ClrNrm()))
+                            str(art.ArtUlc()) + day_width_line +
+                            (6 * (str(art.ArtUte()) + day_width_line)) +
+                            str(art.ArtUrc()) + str(colors.ClrNrm()))
 
         mid_week_divider = (str(self.border_color) +
-                          str(art.ArtLte()) + day_width_line +
-                          (6 * (str(art.ArtCrs()) + day_width_line)) +
-                          str(art.ArtRte()) + str(colors.ClrNrm()))
+                            str(art.ArtLte()) + day_width_line +
+                            (6 * (str(art.ArtCrs()) + day_width_line)) +
+                            str(art.ArtRte()) + str(colors.ClrNrm()))
 
         bot_week_divider = (str(self.border_color) +
-                          str(art.ArtLlc()) + day_width_line +
-                          (6 * (str(art.ArtBte()) + day_width_line)) +
-                          str(art.ArtLrc()) + str(colors.ClrNrm()))
+                            str(art.ArtLlc()) + day_width_line +
+                            (6 * (str(art.ArtBte()) + day_width_line)) +
+                            str(art.ArtLrc()) + str(colors.ClrNrm()))
 
         empty = self.cal_width * ' '
 
@@ -595,7 +592,7 @@ class Gcalapi(object):
         day_names = day_names[6:] + day_names[:6]
 
         day_header = str(self.border_color) + \
-            str(art.ArtVrt()) + str(colors.ClrNrm())
+                     str(art.ArtVrt()) + str(colors.ClrNrm())
         for i in range(7):
             if self.cal_monday:
                 if i == 6:
@@ -607,34 +604,34 @@ class Gcalapi(object):
             day_name += ' ' * (self.cal_width - self.__print_len(day_name))
             day_header += str(self.date_color) + day_name + str(colors.ClrNrm())
             day_header += str(self.border_color) + str(art.ArtVrt()) + \
-                str(colors.ClrNrm())
+                          str(colors.ClrNrm())
 
         if cmd == 'calm':
             top_month_divider = (str(self.border_color) +
-                               str(art.ArtUlc()) + day_width_line +
-                               (6 * (str(art.ArtHrz()) + day_width_line)) +
-                               str(art.ArtUrc()) + str(colors.ClrNrm()))
+                                 str(art.ArtUlc()) + day_width_line +
+                                 (6 * (str(art.ArtHrz()) + day_width_line)) +
+                                 str(art.ArtUrc()) + str(colors.ClrNrm()))
             utils.print_msg(colors.ClrNrm(), "\n" + top_month_divider + "\n")
 
             m = start_date_time.strftime('%B %Y')
             mw = (self.cal_width * 7) + 6
             m += ' ' * (mw - self.__print_len(m))
             utils.print_msg(colors.ClrNrm(),
-                           str(self.border_color) +
-                           str(art.ArtVrt()) +
-                           str(colors.ClrNrm()) +
-                           str(self.date_color) +
-                           m +
-                           str(colors.ClrNrm()) +
-                           str(self.border_color) +
-                           str(art.ArtVrt()) +
-                           str(colors.ClrNrm()) +
-                           '\n')
+                            str(self.border_color) +
+                            str(art.ArtVrt()) +
+                            str(colors.ClrNrm()) +
+                            str(self.date_color) +
+                            m +
+                            str(colors.ClrNrm()) +
+                            str(self.border_color) +
+                            str(art.ArtVrt()) +
+                            str(colors.ClrNrm()) +
+                            '\n')
 
             bot_month_divider = (str(self.border_color) +
-                               str(art.ArtLte()) + day_width_line +
-                               (6 * (str(art.ArtUte()) + day_width_line)) +
-                               str(art.ArtRte()) + str(colors.ClrNrm()))
+                                 str(art.ArtLte()) + day_width_line +
+                                 (6 * (str(art.ArtUte()) + day_width_line)) +
+                                 str(art.ArtRte()) + str(colors.ClrNrm()))
             utils.print_msg(colors.ClrNrm(), bot_month_divider + "\n")
 
         else:  # calw
@@ -660,7 +657,7 @@ class Gcalapi(object):
 
             # create/print date line
             line = str(self.border_color) + \
-                str(art.ArtVrt()) + str(colors.ClrNrm())
+                   str(art.ArtVrt()) + str(colors.ClrNrm())
             for j in range(7):
                 if cmd == 'calw':
                     d = (start_week_date_time +
@@ -669,7 +666,7 @@ class Gcalapi(object):
                     d = (start_week_date_time +
                          timedelta(days=j)).strftime("%d")
                     if cur_month != (start_week_date_time +
-                                    timedelta(days=j)).strftime("%b"):
+                                         timedelta(days=j)).strftime("%b"):
                         d = ''
                 tmp_date_color = self.date_color
 
@@ -680,18 +677,18 @@ class Gcalapi(object):
 
                 d += ' ' * (self.cal_width - self.__print_len(d))
                 line += str(tmp_date_color) + \
-                    d + \
-                    str(colors.ClrNrm()) + \
-                    str(self.border_color) + \
-                    str(art.ArtVrt()) + \
-                    str(colors.ClrNrm())
+                        d + \
+                        str(colors.ClrNrm()) + \
+                        str(self.border_color) + \
+                        str(art.ArtVrt()) + \
+                        str(colors.ClrNrm())
             utils.print_msg(colors.ClrNrm(), line + "\n")
 
             week_color_strings = ['', '', '', '', '', '', '']
             week_event_strings = self.__get_week_event_strings(cmd, cur_month,
-                                                         start_week_date_time,
-                                                         end_week_date_time,
-                                                         event_list)
+                                                               start_week_date_time,
+                                                               end_week_date_time,
+                                                               event_list)
 
             # get date range objects for the next week
             start_week_date_time = end_week_date_time
@@ -701,7 +698,7 @@ class Gcalapi(object):
 
                 done = True
                 line = str(self.border_color) + \
-                    str(art.ArtVrt()) + str(colors.ClrNrm())
+                       str(art.ArtVrt()) + str(colors.ClrNrm())
 
                 for j in range(7):
 
@@ -718,8 +715,8 @@ class Gcalapi(object):
                             (colors.CLR.conky and week_event_strings[j][0] == '$')):
                         week_color_strings[j] = ''
                         while ((not colors.CLR.conky and
-                                week_event_strings[j][0] != 'm') or
-                               (colors.CLR.conky and week_event_strings[j][0] != '}')):
+                                        week_event_strings[j][0] != 'm') or
+                                   (colors.CLR.conky and week_event_strings[j][0] != '}')):
                             week_color_strings[j] += week_event_strings[j][0]
                             week_event_strings[j] = week_event_strings[j][1:]
                         week_color_strings[j] += week_event_strings[j][0]
@@ -814,12 +811,12 @@ class Gcalapi(object):
                     tmp_line = wrapper.fill(line)
                     for single_line in tmp_line.split("\n"):
                         single_line = single_line.ljust(self.detail_descr_width,
-                                                      ' ')
+                                                        ' ')
                         new_descr += single_line[:len(indent)] + \
-                            str(art.ArtVrt()) + \
-                            single_line[(len(indent) + 1):
-                                       (self.detail_descr_width - 1)] + \
-                            str(art.ArtVrt()) + '\n'
+                                     str(art.ArtVrt()) + \
+                                     single_line[(len(indent) + 1):
+                                     (self.detail_descr_width - 1)] + \
+                                     str(art.ArtVrt()) + '\n'
                 else:
                     new_descr += wrapper.fill(line) + "\n"
             return new_descr.rstrip()
@@ -849,7 +846,7 @@ class Gcalapi(object):
         if all_day:
             fmt = '  ' + time_format + '  %s\n'
             utils.print_msg(event_color, fmt %
-                           ('', self.__valid_title(event).strip()))
+                            ('', self.__valid_title(event).strip()))
         else:
             fmt = '  ' + time_format + '  %s\n'
             utils.print_msg(event_color, fmt % (utils.string_to_unicode(
@@ -873,7 +870,7 @@ class Gcalapi(object):
             utils.print_msg(colors.ClrNrm(), xstr)
 
         if self.detail_location and \
-            'location' in event and \
+                        'location' in event and \
                 event['location'].strip():
             xstr = "%s  Location: %s\n" % (
                 details_indent,
@@ -889,7 +886,7 @@ class Gcalapi(object):
                 xstr = "%s    %s: <%s>\n" % (
                     details_indent,
                     event['organizer'].get('displayName', 'Not Provided')
-                    .strip(),
+                        .strip(),
                     event['organizer'].get('email', 'Not Provided').strip()
                 )
                 utils.print_msg(colors.ClrNrm(), xstr)
@@ -932,7 +929,7 @@ class Gcalapi(object):
                     utils.print_msg(colors.ClrNrm(), xstr)
 
         if self.detail_email and \
-            'email' in event['creator'] and \
+                        'email' in event['creator'] and \
                 event['creator']['email'].strip():
             xstr = "%s  Email: %s\n" % (
                 details_indent,
@@ -941,38 +938,38 @@ class Gcalapi(object):
             utils.print_msg(colors.ClrNrm(), xstr)
 
         if self.detail_descr and \
-            'description' in event and \
+                        'description' in event and \
                 event['description'].strip():
             descr_indent = details_indent + '  '
             box = True  # leave old non-box code for option later
             if box:
                 top_marker = (descr_indent +
-                             str(art.ArtUlc()) +
-                             (str(art.ArtHrz()) *
-                              ((self.detail_descr_width - len(descr_indent)) -
-                               2)) +
-                             str(art.ArtUrc()))
+                              str(art.ArtUlc()) +
+                              (str(art.ArtHrz()) *
+                               ((self.detail_descr_width - len(descr_indent)) -
+                                2)) +
+                              str(art.ArtUrc()))
                 bot_marker = (descr_indent +
-                             str(art.ArtLlc()) +
-                             (str(art.ArtHrz()) *
-                              ((self.detail_descr_width - len(descr_indent)) -
-                               2)) +
-                             str(art.ArtLrc()))
+                              str(art.ArtLlc()) +
+                              (str(art.ArtHrz()) *
+                               ((self.detail_descr_width - len(descr_indent)) -
+                                2)) +
+                              str(art.ArtLrc()))
                 xstr = "%s  Description:\n%s\n%s\n%s\n" % (
                     details_indent,
                     top_marker,
                     _format_descr(event['description'].strip(),
-                                 descr_indent, box),
+                                  descr_indent, box),
                     bot_marker
                 )
             else:
                 marker = descr_indent + '-' * \
-                                       (self.detail_descr_width - len(descr_indent))
+                                        (self.detail_descr_width - len(descr_indent))
                 xstr = "%s  Description:\n%s\n%s\n%s\n" % (
                     details_indent,
                     marker,
                     _format_descr(event['description'].strip(),
-                                 descr_indent, box),
+                                  descr_indent, box),
                     marker
                 )
             utils.print_msg(colors.ClrNrm(), xstr)
@@ -982,8 +979,8 @@ class Gcalapi(object):
         if self.iama_expert:
             self.__retry_with_backoff(
                 self.__cal_service().events().
-                delete(calendarId=event['gcalcli_cal']['id'],
-                       eventId=event['id']))
+                    delete(calendarId=event['gcalcli_cal']['id'],
+                           eventId=event['id']))
             utils.print_msg(colors.ClrRed(), "Deleted!\n")
             return
 
@@ -996,8 +993,8 @@ class Gcalapi(object):
         elif val.lower() == 'y':
             self.__retry_with_backoff(
                 self.__cal_service().events().
-                delete(calendarId=event['gcalcli_cal']['id'],
-                       eventId=event['id']))
+                    delete(calendarId=event['gcalcli_cal']['id'],
+                           eventId=event['id']))
             utils.print_msg(colors.ClrRed(), "Deleted!\n")
 
         elif val.lower() == 'q':
@@ -1014,10 +1011,10 @@ class Gcalapi(object):
         while True:
 
             utils.print_msg(colors.ClrMag(), "Edit?\n" +
-                           "[N]o [s]ave [q]uit " +
-                           "[t]itle [l]ocation " +
-                           "[w]hen len[g]th " +
-                           "[r]eminder [d]escr: ")
+                            "[N]o [s]ave [q]uit " +
+                            "[t]itle [l]ocation " +
+                            "[w]hen len[g]th " +
+                            "[r]eminder [d]escr: ")
             val = raw_input()
 
             if not val or val.lower() == 'n':
@@ -1034,9 +1031,9 @@ class Gcalapi(object):
 
                 self.__retry_with_backoff(
                     self.__cal_service().events().
-                    patch(calendarId=event['gcalcli_cal']['id'],
-                          eventId=event['id'],
-                          body=mod_event))
+                        patch(calendarId=event['gcalcli_cal']['id'],
+                              eventId=event['id'],
+                              body=mod_event))
                 utils.print_msg(colors.ClrRed(), "Saved!\n")
                 return
 
@@ -1115,7 +1112,7 @@ class Gcalapi(object):
                 rem = []
                 while True:
                     utils.print_msg(colors.ClrMag(),
-                                   "Enter a valid reminder or '.' to end: ")
+                                    "Enter a valid reminder or '.' to end: ")
                     r = raw_input()
                     if r == '.':
                         break
@@ -1147,7 +1144,7 @@ class Gcalapi(object):
             self.__print_event(event, event['s'].strftime('\n%Y-%m-%d'))
 
     def __iterate_events(self, start_date_time, event_list,
-                       year_date=False, work=None):
+                         year_date=False, work=None):
 
         if len(event_list) == 0:
             utils.print_msg(colors.ClrYlw(), "\nNo Events Found...\n")
@@ -1229,7 +1226,7 @@ class Gcalapi(object):
             if page_token:
                 events = self.__retry_with_backoff(
                     self.__cal_service().events().
-                    list(calendarId=cal['id'], page_token=page_token))
+                        list(calendarId=cal['id'], page_token=page_token))
             else:
                 break
 
@@ -1269,7 +1266,7 @@ class Gcalapi(object):
 
         for cal in self.all_cals:
             utils.print_msg(self.__calendar_color(cal),
-                           format % (cal['accessRole'], cal['summary']))
+                            format % (cal['accessRole'], cal['summary']))
 
     def text_query(self, search_text='', start_text='', end_text=''):
 
@@ -1410,7 +1407,7 @@ class Gcalapi(object):
 
         new_event = self.__retry_with_backoff(
             self.__cal_service().events().quickAdd(calendarId=self.cals[0]['id'],
-                                                 text=event_text))
+                                                   text=event_text))
 
         if reminder or not self.default_reminders:
             rem = {}
@@ -1423,9 +1420,9 @@ class Gcalapi(object):
 
             new_event = self.__retry_with_backoff(
                 self.__cal_service().events().
-                patch(calendarId=self.cals[0]['id'],
-                      eventId=new_event['id'],
-                      body=rem))
+                    patch(calendarId=self.cals[0]['id'],
+                          eventId=new_event['id'],
+                          body=rem))
 
         if self.detail_url:
             h_link = self.__shorten_url(new_event['htmlLink'])
@@ -1471,7 +1468,7 @@ class Gcalapi(object):
         print(str(event))
         new_event = self.__retry_with_backoff(
             self.__cal_service().events().
-            insert(calendarId=self.cals[0]['id'], body=(event)))
+                insert(calendarId=self.cals[0]['id'], body=(event)))
 
         if self.detail_url:
             h_link = self.__shorten_url(new_event['htmlLink'])
@@ -1487,7 +1484,7 @@ class Gcalapi(object):
 
         self.iama_expert = expert
         self.__iterate_events(self.now, event_list,
-                            year_date=True, work=self.__delete_event)
+                              year_date=True, work=self.__delete_event)
 
     def edit_events(self, search_text=''):
 
@@ -1498,7 +1495,7 @@ class Gcalapi(object):
         event_list = self.__search_for_cal_events(None, None, search_text)
 
         self.__iterate_events(self.now, event_list,
-                            year_date=True, work=self.__edit_event)
+                              year_date=True, work=self.__edit_event)
 
     def remind(self, minutes=10, command=None, use_reminders=False):
         """Check for events between now and now+minutes.
@@ -1552,10 +1549,10 @@ class Gcalapi(object):
         if not pid:
             os.execvp(cmd[0], cmd)
 
-    def ImportICS(self, verbose=False, dump=False, reminder=None,
-                  icsFile=None):
+    def import_ics(self, verbose=False, dump=False, reminder=None,
+                   icsFile=None):
 
-        def CreateEventFromVOBJ(ve):
+        def create_event_from_vobj(ve):
 
             event = {}
 
@@ -1578,12 +1575,12 @@ class Gcalapi(object):
 
             if not hasattr(ve, 'dtstart') or not hasattr(ve, 'dtend'):
                 utils.print_err_msg("Error: event does not have a dtstart and "
-                                  "dtend!\n")
+                                    "dtend!\n")
                 return None
 
             if ve.dtstart.value:
                 utils.debug_print("DTSTart.ART: %s\n" %
-                                 ve.dtstart.value.isoformat())
+                                  ve.dtstart.value.isoformat())
             if ve.dtend.value:
                 utils.debug_print("DTEND: %s\n" % ve.dtend.value.isoformat())
             if verbose:
@@ -1720,7 +1717,7 @@ class Gcalapi(object):
 
             for ve in v.vevent_list:
 
-                event = CreateEventFromVOBJ(ve)
+                event = create_event_from_vobj(ve)
 
                 if not event:
                     continue
@@ -1731,11 +1728,11 @@ class Gcalapi(object):
                 if not verbose:
                     newEvent = self.__retry_with_backoff(
                         self.__cal_service().events().
-                        insert(calendarId=self.cals[0]['id'],
-                               body=event))
+                            insert(calendarId=self.cals[0]['id'],
+                                   body=event))
                     hLink = self.__shorten_url(newEvent['htmlLink'])
                     utils.print_msg(colors.ClrGrn(),
-                                   'New event added: %s\n' % hLink)
+                                    'New event added: %s\n' % hLink)
                     continue
 
                 utils.print_msg(colors.ClrMag(), "\n[S]kip [i]mport [q]uit: ")
@@ -1745,11 +1742,11 @@ class Gcalapi(object):
                 if val.lower() == 'i':
                     newEvent = self.__retry_with_backoff(
                         self.__cal_service().events().
-                        insert(calendarId=self.cals[0]['id'],
-                               body=event))
+                            insert(calendarId=self.cals[0]['id'],
+                                   body=event))
                     hLink = self.__shorten_url(newEvent['htmlLink'])
                     utils.print_msg(colors.ClrGrn(),
-                                   'New event added: %s\n' % hLink)
+                                    'New event added: %s\n' % hLink)
                 elif val.lower() == 'q':
                     sys.exit(0)
                 else:
@@ -1757,7 +1754,20 @@ class Gcalapi(object):
                     sys.exit(1)
 
 
-def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
+def parse_color_options(set_color):
+    """Parses color options and returns them formatted correctly to be consumed by a Gcalapi object"""
+    valid_color_options = ["owner", "writer", "reader", "freebusy", "date", "nowmarker", "border"]
+    color_options = {}
+    for opt in set_color:
+        if opt[0] not in valid_color_options:
+            raise ValueError("Not a valid color type!")
+        color_options[opt[0] + "_color"] = opt[1]
+    return color_options
+
+
+def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar,
+               cache, client_id, client_secret, set_color, config_folder, details, include_config,
+               military, monday, refresh, started):
     if not color:
         colors.CLR.use_color = False
 
@@ -1772,7 +1782,7 @@ def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
             locale.setlocale(locale.LC_ALL, user_locale)
         except Exception as e:
             utils.print_err_msg("Error: " + str(e) + "!\n"
-                                                   "Check supported locales of your system.\n")
+                                                     "Check supported locales of your system.\n")
             sys.exit(1)
 
     if len(calendar) == 0:
@@ -1786,4 +1796,6 @@ def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
         cal_names_filtered.append(str(cal_name_simple))
         cal_name_colors.append(cal_colors[cal_name_simple])
     cal_names = cal_names_filtered
-    return cal_names, cal_name_colors
+    gcal = Gcalapi(cal_names, cal_name_colors, cache=cache, client_id=client_id, client_secret=client_secret,
+                   military=military, monday=module, refresh=refresh, started=started)
+    return gcal

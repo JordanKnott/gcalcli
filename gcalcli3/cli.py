@@ -650,7 +650,7 @@ def import_ics(path, dump, cache, calendar, client_id, client_secret, color, set
     gcal = gcalapi.Gcalapi(cal_names=cal_names,
                            cal_name_colors=cal_name_colors)
     gcal.load()
-    gcal.ImportICS(verbose=verbose, dump=dump, ics_file=path, reminder=reminder)
+    gcal.import_ics(verbose=verbose, dump=dump, ics_file=path, reminder=reminder)
 
 
 @click.group()

@@ -3,5 +3,7 @@ dist/
 gcalcli.egg-info
 *.pyc
 .idea/
+.cache/
+.coverage/
 
 
