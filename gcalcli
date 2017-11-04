@@ -2557,6 +2557,51 @@ def remind_events(minutes, command, use_reminders, cache, calendar, client_id, c
     else:
         gcal.Remind(use_reminders=use_reminders)
 
+@click.command("import")
+@click.argument("path")
+@click.option("--dump", default=False, help="Dump events to screen")
+@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
+@click.option("--calendar", default=[], help="Which calendars to use;" +
+                                             "repeat this option to specify a list of values")
+@click.option("--client-id", default=None, help="API client_id")
+@click.option("--client-secret", default=None, help="API client_secret")
+@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
+@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
+@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
+@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
+@click.option("--default-calendar", default=[],
+              help="Optional default calendar to use if no --calendar options are given; " +
+                   "repeat this this option to speciy a list of values")
+@click.option("--include-config/--no-include-config", default=False,
+              help="Whether to include ~/.gcalclirc when using --config-folder")
+@click.option("--locale", "user_locale", default=None, help="System locale")
+@click.option("--military/--no-military", default=False, help="Use 24 hour display")
+@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
+@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
+@click.option("--started/--no-started", default=True, help="Show events that have started")
+@click.option("--verbose", "-v", default=False, help="Show logs")
+@click.option("--reminder", "-r", multiple=True, callback=validate_reminder, default=False,
+              help="Reminders in the form 'TIME METH' or 'TIME'.  TIME " +
+                   "is a number which may be followed by an optional " +
+                   "'w', 'd', 'h', or 'm' (meaning weeks, days, hours, " +
+                   "minutes) and default to minutes.  METH is a string " +
+                   "'popup', 'email', or 'sms' and defaults to popup.")
+def import_ics(path, dump, cache, calendar, client_id, client_secret, color, set_color,
+                  config_folder, conky,
+                  default_calendar, include_config, user_locale, military, monday, refresh, started,
+                  verbose, reminder):
+    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
+
+    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
+    gcal = gcalcli(calNames=calNames,
+                   calNameColors=calNameColors)
+    gcal.load()
+    gcal.ImportICS(verbose=verbose, dump=dump, icsFile=path, reminder=reminder)
+
+
+
+
+
 
 def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
     if not color:
