@@ -2481,6 +2481,7 @@ def delete_events(title, start_date, end_date, force, cache, calendar, client_id
 
     gcal.DeleteEvents(str(title), force, eStart, eEnd)
 
+
 @click.command("edit")
 @click.argument("title")
 @click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
@@ -2504,8 +2505,8 @@ def delete_events(title, start_date, end_date, force, cache, calendar, client_id
 @click.option("--started/--no-started", default=True, help="Show events that have started")
 @click.option("--verbose", "-v", default=False, help="Show logs")
 def edit_events(title, cache, calendar, client_id, client_secret, color, set_color, config_folder, conky,
-                   default_calendar, include_config, user_locale, military, monday, refresh, started,
-                   verbose):
+                default_calendar, include_config, user_locale, military, monday, refresh, started,
+                verbose):
     """Shows the current agenda. Uses the default calendar unless otherwise specified"""
 
     calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
@@ -2513,6 +2514,48 @@ def edit_events(title, cache, calendar, client_id, client_secret, color, set_col
                    calNameColors=calNameColors)
     gcal.load()
     gcal.EditEvents(str(title))
+
+
+@click.command("remind")
+@click.option("--minutes", default=None, help="Extends the range of events to be notified for")
+@click.option("--command", default=None, help="The command to notify with")
+@click.option("--use-reminders", default=False, help="Use reminders")
+@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
+@click.option("--calendar", default=[], help="Which calendars to use;" +
+                                             "repeat this option to specify a list of values")
+@click.option("--client-id", default=None, help="API client_id")
+@click.option("--client-secret", default=None, help="API client_secret")
+@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
+@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
+@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
+@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
+@click.option("--default-calendar", default=[],
+              help="Optional default calendar to use if no --calendar options are given; " +
+                   "repeat this this option to speciy a list of values")
+@click.option("--include-config/--no-include-config", default=False,
+              help="Whether to include ~/.gcalclirc when using --config-folder")
+@click.option("--locale", "user_locale", default=None, help="System locale")
+@click.option("--military/--no-military", default=False, help="Use 24 hour display")
+@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
+@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
+@click.option("--started/--no-started", default=True, help="Show events that have started")
+@click.option("--verbose", "-v", default=False, help="Show logs")
+def remind_events(minutes, command, use_reminders, cache, calendar, client_id, client_secret, color, set_color,
+                  config_folder, conky,
+                  default_calendar, include_config, user_locale, military, monday, refresh, started,
+                  verbose):
+    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
+
+    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
+    gcal = gcalcli(calNames=calNames,
+                   calNameColors=calNameColors)
+    gcal.load()
+    if minutes is not None and command is not None:
+        gcal.Remind(int(minutes), command, use_reminders=use_reminders)
+    elif minutes is not None:
+        gcal.Remind(int(minutes), use_reminders=use_reminders)
+    else:
+        gcal.Remind(use_reminders=use_reminders)
 
 
 def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
@@ -2567,6 +2610,7 @@ gcal.add_command(quick_add_event)
 gcal.add_command(add_event)
 gcal.add_command(delete_events)
 gcal.add_command(edit_events)
+gcal.add_command(remind_events)
 
 signal.signal(signal.SIGINT, SIGINT_handler)
 
