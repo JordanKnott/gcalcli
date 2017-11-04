@@ -4,6 +4,7 @@ import re
 
 
 def validate_set_color(ctx, param, value):
+    """Validates the set-color option by making sure all of the options are valid"""
     valid_options = ["owner", "writer", "reader",
                      "freebusy", "date", "nowmarker", "border"]
     for opt in value:
@@ -13,8 +14,8 @@ def validate_set_color(ctx, param, value):
     return value
 
 
-# reminder option validator
 def validate_reminder(ctx, param, value):
+    """Validates the reminder option using a regular expression."""
     if value is False:
         return value
     for rem in value:
