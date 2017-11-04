@@ -1,9 +1,10 @@
-v4.0.0a2
-  * Support for Python3 via six
-
-v4.0.0a1
-  * Move from gflags to argparse
-    This is a major, non-backwards compatible change (hence the roll up to v4)
+v4.0.0
+  * Forked from original project https://github.com/insanum/gcalcli
+  * Moved option parser to Click
+  * Renamed or removed many options. Collapsed others into single option
+  * Broken up script into multiple files for readability
+  * Added Python 3 support
+  * Source code now PEP8 compliant
 
 v3.4.0
   * Support for adding attendees (jcmuller)

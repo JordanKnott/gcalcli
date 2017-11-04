@@ -12,13 +12,13 @@ try:
 except:
     long_description = ''
 
-setup(name='gcalcli',
-      version='4.0.0a2',
-      maintainer='Eric Davis, Brian Hartvigsen',
-      maintainer_email='edavis@insanum.com, brian.andrew@brianandjenny.com',
+setup(name='gcalcli3',
+      version='4.0.0',
+      maintainer='Jordan Knott',
+      maintainer_email='jordanaknott@gmail.com',
       description='Google Calendar Command Line Interface',
       long_description=long_description,
-      url='https://github.com/insanum/gcalcli',
+      url='https://github.com/jordanknott/gcalcli3',
       license='MIT',
       scripts=['gcalcli'],
       install_requires=[
@@ -41,4 +41,5 @@ setup(name='gcalcli',
           "Programming Language :: Python :: 2.6",
           "Programming Language :: Python :: 2.7",
           "Programming Language :: Python :: 3",
+          "Programming Language :: Python :: 3.5",
       ])

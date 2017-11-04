@@ -122,6 +122,7 @@ from datetime import datetime, timedelta, date
 from unicodedata import east_asian_width
 from builtins import str, range
 from past.builtins import cmp, raw_input
+from . import art, validators, colors, utils
 
 # Required 3rd party libraries
 try:
@@ -159,316 +160,8 @@ except:
 locale.setlocale(locale.LC_ALL, "")
 
 
-def stringToUnicode(string):
-    return str(string)
-
-
-def stringFromUnicode(string):
-    return string.encode(locale.getlocale()[1] or
-                         locale.getpreferredencoding(False) or
-                         "UTF-8", "replace")
-
-
-# set-color option validator
-def validate_set_color(ctx, param, value):
-    valid_options = ["owner", "writer", "reader", "freebusy", "date", "nowmarker", "border"]
-    for opt in value:
-        if opt[0] not in valid_options:
-            raise click.BadParameter("type should be one of the following " + str(valid_options))
-    return value
-
-
-# reminder option validator
-def validate_reminder(ctx, param, value):
-    if value is False:
-        return value
-    for rem in value:
-        matchObj = re.match("^(\d+)([wdhm]?)(?:\s+(popup|email|sms))?$", rem)
-        if not matchObj:
-            raise click.BadParameter("Reminders should be in the form of 'TIME METH' or 'TIME'")
-    return value
-
-
-def Version():
-    sys.stdout.write(__program__ + ' ' + __version__ + ' (' + __author__ + ')\n')
-    sys.exit(1)
-
-
-def Usage(expanded=False):
-    sys.stdout.write(__doc__ % sys.argv[0])
-    sys.exit(1)
-
-
-class CLR:
-    useColor = True
-    conky = False
-
-    def __str__(self):
-        return self.color if self.useColor else ""
-
-
-class CLR_NRM(CLR):
-    color = "\033[0m"
-
-
-class CLR_BLK(CLR):
-    color = "\033[0;30m"
-
-
-class CLR_BRBLK(CLR):
-    color = "\033[30;1m"
-
-
-class CLR_RED(CLR):
-    color = "\033[0;31m"
-
-
-class CLR_BRRED(CLR):
-    color = "\033[31;1m"
-
-
-class CLR_GRN(CLR):
-    color = "\033[0;32m"
-
-
-class CLR_BRGRN(CLR):
-    color = "\033[32;1m"
-
-
-class CLR_YLW(CLR):
-    color = "\033[0;33m"
-
-
-class CLR_BRYLW(CLR):
-    color = "\033[33;1m"
-
-
-class CLR_BLU(CLR):
-    color = "\033[0;34m"
-
-
-class CLR_BRBLU(CLR):
-    color = "\033[34;1m"
-
-
-class CLR_MAG(CLR):
-    color = "\033[0;35m"
-
-
-class CLR_BRMAG(CLR):
-    color = "\033[35;1m"
-
-
-class CLR_CYN(CLR):
-    color = "\033[0;36m"
-
-
-class CLR_BRCYN(CLR):
-    color = "\033[36;1m"
-
-
-class CLR_WHT(CLR):
-    color = "\033[0;37m"
-
-
-class CLR_BRWHT(CLR):
-    color = "\033[37;1m"
-
-
-def SetConkyColors():
-    # XXX these colors should be configurable
-    CLR.conky = True
-    CLR_NRM.color = ""
-    CLR_BLK.color = "${color black}"
-    CLR_BRBLK.color = "${color black}"
-    CLR_RED.color = "${color red}"
-    CLR_BRRED.color = "${color red}"
-    CLR_GRN.color = "${color green}"
-    CLR_BRGRN.color = "${color green}"
-    CLR_YLW.color = "${color yellow}"
-    CLR_BRYLW.color = "${color yellow}"
-    CLR_BLU.color = "${color blue}"
-    CLR_BRBLU.color = "${color blue}"
-    CLR_MAG.color = "${color magenta}"
-    CLR_BRMAG.color = "${color magenta}"
-    CLR_CYN.color = "${color cyan}"
-    CLR_BRCYN.color = "${color cyan}"
-    CLR_WHT.color = "${color white}"
-    CLR_BRWHT.color = "${color white}"
-
-
-class ART:
-    useArt = True
-    fancy = ''
-    plain = ''
-
-    def __str__(self):
-        return self.fancy if self.useArt else self.plain
-
-
-class ART_HRZ(ART):
-    fancy = '\033(0\x71\033(B'
-    plain = '-'
-
-
-class ART_VRT(ART):
-    fancy = '\033(0\x78\033(B'
-    plain = '|'
-
-
-class ART_LRC(ART):
-    fancy = '\033(0\x6A\033(B'
-    plain = '+'
-
-
-class ART_URC(ART):
-    fancy = '\033(0\x6B\033(B'
-    plain = '+'
-
-
-class ART_ULC(ART):
-    fancy = '\033(0\x6C\033(B'
-    plain = '+'
-
-
-class ART_LLC(ART):
-    fancy = '\033(0\x6D\033(B'
-    plain = '+'
-
-
-class ART_CRS(ART):
-    fancy = '\033(0\x6E\033(B'
-    plain = '+'
-
-
-class ART_LTE(ART):
-    fancy = '\033(0\x74\033(B'
-    plain = '+'
-
-
-class ART_RTE(ART):
-    fancy = '\033(0\x75\033(B'
-    plain = '+'
-
-
-class ART_BTE(ART):
-    fancy = '\033(0\x76\033(B'
-    plain = '+'
-
-
-class ART_UTE(ART):
-    fancy = '\033(0\x77\033(B'
-    plain = '+'
-
-
-def PrintErrMsg(msg):
-    PrintMsg(CLR_BRRED(), msg)
-
-
-def PrintMsg(color, msg):
-    if CLR.useColor:
-        sys.stdout.write(str(color))
-        sys.stdout.write(str(msg))
-        sys.stdout.write(str(CLR_NRM()))
-    else:
-        sys.stdout.write(msg)
-
-
-def DebugPrint(msg):
-    return
-    PrintMsg(CLR_YLW(), msg)
-
-
-def dprint(obj):
-    try:
-        from pprint import pprint
-        pprint(obj)
-    except ImportError:
-        print(obj)
-
-
-class DateTimeParser:
-    def __init__(self):
-        self.pdtCalendar = parsedatetime.Calendar()
-
-    def fromString(self, eWhen):
-        defaultDateTime = datetime.now(tzlocal()).replace(hour=0,
-                                                          minute=0,
-                                                          second=0,
-                                                          microsecond=0)
-
-        try:
-            eTimeStart = parse(eWhen, default=defaultDateTime)
-        except:
-            struct, result = self.pdtCalendar.parse(eWhen)
-            if not result:
-                raise ValueError("Date and time is invalid")
-            eTimeStart = datetime.fromtimestamp(time.mktime(struct), tzlocal())
-
-        return eTimeStart
-
-
-def DaysSinceEpoch(dt):
-    # Because I hate magic numbers
-    __DAYS_IN_SECONDS__ = 24 * 60 * 60
-    return calendar.timegm(dt.timetuple()) / __DAYS_IN_SECONDS__
-
-
-def GetTimeFromStr(eWhen, eDuration=0, allday=False):
-    dtp = DateTimeParser()
-
-    try:
-        eTimeStart = dtp.fromString(eWhen)
-    except:
-        PrintErrMsg('Date and time is invalid!\n')
-        sys.exit(1)
-
-    if allday:
-        try:
-            eTimeStop = eTimeStart + timedelta(days=float(eDuration))
-        except:
-            PrintErrMsg('Duration time (days) is invalid\n')
-            sys.exit(1)
-
-        sTimeStart = eTimeStart.date().isoformat()
-        sTimeStop = eTimeStop.date().isoformat()
-
-    else:
-        try:
-            eTimeStop = eTimeStart + timedelta(minutes=float(eDuration))
-        except:
-            PrintErrMsg('Duration time (minutes) is invalid\n')
-            sys.exit(1)
-
-        sTimeStart = eTimeStart.isoformat()
-        sTimeStop = eTimeStop.isoformat()
-
-    return sTimeStart, sTimeStop
-
-
-def ParseReminder(rem):
-    matchObj = re.match(r'^(\d+)([wdhm]?)(?:\s+(popup|email|sms))?$', rem)
-    if not matchObj:
-        PrintErrMsg('Invalid reminder: ' + rem + '\n')
-        sys.exit(1)
-    n = int(matchObj.group(1))
-    t = matchObj.group(2)
-    m = matchObj.group(3)
-    if t == 'w':
-        n = n * 7 * 24 * 60
-    elif t == 'd':
-        n = n * 24 * 60
-    elif t == 'h':
-        n = n * 60
-
-    if not m:
-        m = 'popup'
-
-    return n, m
-
-
 @attr.s
-class gcalcli(object):
+class gcalapi(object):
     cache = {}
     allCals = []
     allEvents = []
@@ -480,7 +173,7 @@ class gcalcli(object):
     calService = None
     urlService = None
     command = 'notify-send -u critical -a gcalcli %s'
-    dateParser = DateTimeParser()
+    dateParser = utils.DateTimeParser()
 
     ACCESS_OWNER = 'owner'
     ACCESS_WRITER = 'writer'
@@ -506,13 +199,13 @@ class gcalcli(object):
     ignoreDeclined = attr.ib(default=False)
     calWidth = attr.ib(default=10)
     calMonday = attr.ib(default=False)
-    calOwnerColor = attr.ib(default=CLR_CYN())
-    calWriterColor = attr.ib(default=CLR_GRN())
-    calReaderColor = attr.ib(default=CLR_MAG())
-    calFreeBusyColor = attr.ib(default=CLR_NRM())
-    dateColor = attr.ib(default=CLR_YLW())
-    nowMarkerColor = attr.ib(default=CLR_BRRED())
-    borderColor = attr.ib(default=CLR_WHT())
+    calOwnerColor = attr.ib(default=colors.CLR_CYN())
+    calWriterColor = attr.ib(default=colors.CLR_GRN())
+    calReaderColor = attr.ib(default=colors.CLR_MAG())
+    calFreeBusyColor = attr.ib(default=colors.CLR_NRM())
+    dateColor = attr.ib(default=colors.CLR_YLW())
+    nowMarkerColor = attr.ib(default=colors.CLR_BRRED())
+    borderColor = attr.ib(default=colors.CLR_WHT())
     tsv = attr.ib(default=False)
     refreshCache = attr.ib(default=False)
     useCache = attr.ib(default=True)
@@ -683,7 +376,7 @@ class gcalcli(object):
     def _CalendarColor(self, cal):
 
         if cal is None:
-            return CLR_NRM()
+            return colors.CLR_NRM()
         elif 'colorSpec' in cal and cal['colorSpec'] is not None:
             return cal['colorSpec']
         elif cal['accessRole'] == self.ACCESS_OWNER:
@@ -695,7 +388,7 @@ class gcalcli(object):
         elif cal['accessRole'] == self.ACCESS_FREEBUSY:
             return self.calFreeBusyColor
         else:
-            return CLR_NRM()
+            return colors.CLR_NRM()
 
     def _ValidTitle(self, event):
         if 'summary' in event and event['summary'].strip():
@@ -735,8 +428,8 @@ class gcalcli(object):
                 allDay = self._IsAllDay(event)
 
                 if not nowMarkerPrinted:
-                    if (DaysSinceEpoch(self.now) <
-                            DaysSinceEpoch(event['s'])):
+                    if (utils.DaysSinceEpoch(self.now) <
+                            utils.DaysSinceEpoch(event['s'])):
                         nowMarkerPrinted = True
                         weekEventStrings[dayNum - 1] += \
                             ("\n" +
@@ -778,8 +471,8 @@ class gcalcli(object):
                 # newline and empty string are the keys to turn off coloring
                 weekEventStrings[dayNum] += \
                     "\n" + \
-                    stringToUnicode(str(eventColor)) + \
-                    stringToUnicode(tmpTimeStr.strip()) + \
+                    utils.stringToUnicode(str(eventColor)) + \
+                    utils.stringToUnicode(tmpTimeStr.strip()) + \
                     " " + \
                     self._ValidTitle(event).strip()
 
@@ -790,7 +483,7 @@ class gcalcli(object):
         # us the info we want.  Date string were coming in as `str` type
         # so we convert them to unicode and then check their size. Fixes
         # the output issues we were seeing around non-US locale strings
-        string = stringToUnicode(string)
+        string = utils.stringToUnicode(string)
         printLen = 0
         for tmpChar in string:
             printLen += self.UNIWIDTH[east_asian_width(tmpChar)]
@@ -800,7 +493,7 @@ class gcalcli(object):
     def _NextCut(self, string, curPrintLen):
         idx = 0
         printLen = 0
-        string = stringToUnicode(string)
+        string = utils.stringToUnicode(string)
         for tmpChar in string:
             if (curPrintLen + printLen) >= self.calWidth:
                 return (printLen, idx, True)
@@ -821,40 +514,40 @@ class gcalcli(object):
             else:
                 idx = len(eventString)
 
-            DebugPrint("------ printLen=%d (end of string)\n" % idx)
+            utils.DebugPrint("------ printLen=%d (end of string)\n" % idx)
             return (printLen, idx)
 
         cutWidth, cut, forceCut = self._NextCut(eventString, 0)
-        DebugPrint("------ cutWidth=%d cut=%d \"%s\"\n" %
-                   (cutWidth, cut, eventString))
+        utils.DebugPrint("------ cutWidth=%d cut=%d \"%s\"\n" %
+                         (cutWidth, cut, eventString))
 
         if forceCut:
-            DebugPrint("--- forceCut cutWidth=%d cut=%d\n" % (cutWidth, cut))
+            utils.DebugPrint("--- forceCut cutWidth=%d cut=%d\n" % (cutWidth, cut))
             return (cutWidth, cut)
 
-        DebugPrint("--- looping\n")
+        utils.DebugPrint("--- looping\n")
 
         while cutWidth < self.calWidth:
 
-            DebugPrint("--- cutWidth=%d cut=%d \"%s\"\n" %
-                       (cutWidth, cut, eventString[cut:]))
+            utils.DebugPrint("--- cutWidth=%d cut=%d \"%s\"\n" %
+                             (cutWidth, cut, eventString[cut:]))
 
             while cut < self.calWidth and \
                             cut < printLen and \
                             eventString[cut] == ' ':
-                DebugPrint("-> skipping space <-\n")
+                utils.DebugPrint("-> skipping space <-\n")
                 cutWidth += 1
                 cut += 1
 
-            DebugPrint("--- cutWidth=%d cut=%d \"%s\"\n" %
-                       (cutWidth, cut, eventString[cut:]))
+            utils.DebugPrint("--- cutWidth=%d cut=%d \"%s\"\n" %
+                             (cutWidth, cut, eventString[cut:]))
 
             nextCutWidth, nextCut, forceCut = \
                 self._NextCut(eventString[cut:], cutWidth)
 
             if forceCut:
-                DebugPrint("--- forceCut cutWidth=%d cut=%d\n" % (cutWidth,
-                                                                  cut))
+                utils.DebugPrint("--- forceCut cutWidth=%d cut=%d\n" % (cutWidth,
+                                                                        cut))
                 break
 
             cutWidth += nextCutWidth
@@ -863,7 +556,7 @@ class gcalcli(object):
             if eventString[cut] == '\n':
                 break
 
-            DebugPrint("--- loop cutWidth=%d cut=%d\n" % (cutWidth, cut))
+            utils.DebugPrint("--- loop cutWidth=%d cut=%d\n" % (cutWidth, cut))
 
         return (cutWidth, cut)
 
@@ -876,22 +569,22 @@ class gcalcli(object):
         while (len(eventList) and eventList[0]['s'] < startDateTime):
             eventList = eventList[1:]
 
-        dayWidthLine = (self.calWidth * str(ART_HRZ()))
+        dayWidthLine = (self.calWidth * str(art.ART_HRZ()))
 
         topWeekDivider = (str(self.borderColor) +
-                          str(ART_ULC()) + dayWidthLine +
-                          (6 * (str(ART_UTE()) + dayWidthLine)) +
-                          str(ART_URC()) + str(CLR_NRM()))
+                          str(art.ART_ULC()) + dayWidthLine +
+                          (6 * (str(art.ART_UTE()) + dayWidthLine)) +
+                          str(art.ART_URC()) + str(colors.CLR_NRM()))
 
         midWeekDivider = (str(self.borderColor) +
-                          str(ART_LTE()) + dayWidthLine +
-                          (6 * (str(ART_CRS()) + dayWidthLine)) +
-                          str(ART_RTE()) + str(CLR_NRM()))
+                          str(art.ART_LTE()) + dayWidthLine +
+                          (6 * (str(art.ART_CRS()) + dayWidthLine)) +
+                          str(art.ART_RTE()) + str(colors.CLR_NRM()))
 
         botWeekDivider = (str(self.borderColor) +
-                          str(ART_LLC()) + dayWidthLine +
-                          (6 * (str(ART_BTE()) + dayWidthLine)) +
-                          str(ART_LRC()) + str(CLR_NRM()))
+                          str(art.ART_LLC()) + dayWidthLine +
+                          (6 * (str(art.ART_BTE()) + dayWidthLine)) +
+                          str(art.ART_LRC()) + str(colors.CLR_NRM()))
 
         empty = self.calWidth * ' '
 
@@ -899,7 +592,7 @@ class gcalcli(object):
         dayNames = [date(2001, 1, i + 1).strftime('%A') for i in range(7)]
         dayNames = dayNames[6:] + dayNames[:6]
 
-        dayHeader = str(self.borderColor) + str(ART_VRT()) + str(CLR_NRM())
+        dayHeader = str(self.borderColor) + str(art.ART_VRT()) + str(colors.CLR_NRM())
         for i in range(7):
             if self.calMonday:
                 if i == 6:
@@ -909,43 +602,43 @@ class gcalcli(object):
             else:
                 dayName = dayNames[i]
             dayName += ' ' * (self.calWidth - self._PrintLen(dayName))
-            dayHeader += str(self.dateColor) + dayName + str(CLR_NRM())
-            dayHeader += str(self.borderColor) + str(ART_VRT()) + \
-                         str(CLR_NRM())
+            dayHeader += str(self.dateColor) + dayName + str(colors.CLR_NRM())
+            dayHeader += str(self.borderColor) + str(art.ART_VRT()) + \
+                         str(colors.CLR_NRM())
 
         if cmd == 'calm':
             topMonthDivider = (str(self.borderColor) +
-                               str(ART_ULC()) + dayWidthLine +
-                               (6 * (str(ART_HRZ()) + dayWidthLine)) +
-                               str(ART_URC()) + str(CLR_NRM()))
-            PrintMsg(CLR_NRM(), "\n" + topMonthDivider + "\n")
+                               str(art.ART_ULC()) + dayWidthLine +
+                               (6 * (str(art.ART_HRZ()) + dayWidthLine)) +
+                               str(art.ART_URC()) + str(colors.CLR_NRM()))
+            utils.PrintMsg(colors.CLR_NRM(), "\n" + topMonthDivider + "\n")
 
             m = startDateTime.strftime('%B %Y')
             mw = (self.calWidth * 7) + 6
             m += ' ' * (mw - self._PrintLen(m))
-            PrintMsg(CLR_NRM(),
-                     str(self.borderColor) +
-                     str(ART_VRT()) +
-                     str(CLR_NRM()) +
-                     str(self.dateColor) +
-                     m +
-                     str(CLR_NRM()) +
-                     str(self.borderColor) +
-                     str(ART_VRT()) +
-                     str(CLR_NRM()) +
-                     '\n')
+            utils.PrintMsg(colors.CLR_NRM(),
+                           str(self.borderColor) +
+                           str(art.ART_VRT()) +
+                           str(colors.CLR_NRM()) +
+                           str(self.dateColor) +
+                           m +
+                           str(colors.CLR_NRM()) +
+                           str(self.borderColor) +
+                           str(art.ART_VRT()) +
+                           str(colors.CLR_NRM()) +
+                           '\n')
 
             botMonthDivider = (str(self.borderColor) +
-                               str(ART_LTE()) + dayWidthLine +
-                               (6 * (str(ART_UTE()) + dayWidthLine)) +
-                               str(ART_RTE()) + str(CLR_NRM()))
-            PrintMsg(CLR_NRM(), botMonthDivider + "\n")
+                               str(art.ART_LTE()) + dayWidthLine +
+                               (6 * (str(art.ART_UTE()) + dayWidthLine)) +
+                               str(art.ART_RTE()) + str(colors.CLR_NRM()))
+            utils.PrintMsg(colors.CLR_NRM(), botMonthDivider + "\n")
 
         else:  # calw
-            PrintMsg(CLR_NRM(), "\n" + topWeekDivider + "\n")
+            utils.PrintMsg(colors.CLR_NRM(), "\n" + topWeekDivider + "\n")
 
-        PrintMsg(CLR_NRM(), dayHeader + "\n")
-        PrintMsg(CLR_NRM(), midWeekDivider + "\n")
+        utils.PrintMsg(colors.CLR_NRM(), dayHeader + "\n")
+        utils.PrintMsg(colors.CLR_NRM(), midWeekDivider + "\n")
 
         curMonth = startDateTime.strftime("%b")
 
@@ -963,7 +656,7 @@ class gcalcli(object):
         for i in range(int(count)):
 
             # create/print date line
-            line = str(self.borderColor) + str(ART_VRT()) + str(CLR_NRM())
+            line = str(self.borderColor) + str(art.ART_VRT()) + str(colors.CLR_NRM())
             for j in range(7):
                 if cmd == 'calw':
                     d = (startWeekDateTime +
@@ -984,11 +677,11 @@ class gcalcli(object):
                 d += ' ' * (self.calWidth - self._PrintLen(d))
                 line += str(tmpDateColor) + \
                         d + \
-                        str(CLR_NRM()) + \
+                        str(colors.CLR_NRM()) + \
                         str(self.borderColor) + \
-                        str(ART_VRT()) + \
-                        str(CLR_NRM())
-            PrintMsg(CLR_NRM(), line + "\n")
+                        str(art.ART_VRT()) + \
+                        str(colors.CLR_NRM())
+            utils.PrintMsg(colors.CLR_NRM(), line + "\n")
 
             weekColorStrings = ['', '', '', '', '', '', '']
             weekEventStrings = self._GetWeekEventStrings(cmd, curMonth,
@@ -1003,7 +696,7 @@ class gcalcli(object):
             while 1:
 
                 done = True
-                line = str(self.borderColor) + str(ART_VRT()) + str(CLR_NRM())
+                line = str(self.borderColor) + str(art.ART_VRT()) + str(colors.CLR_NRM())
 
                 for j in range(7):
 
@@ -1011,17 +704,17 @@ class gcalcli(object):
                         weekColorStrings[j] = ''
                         line += (empty +
                                  str(self.borderColor) +
-                                 str(ART_VRT()) +
-                                 str(CLR_NRM()))
+                                 str(art.ART_VRT()) +
+                                 str(colors.CLR_NRM()))
                         continue
 
                     # get/skip over a color sequence
-                    if ((not CLR.conky and weekEventStrings[j][0] == '\033') or
-                            (CLR.conky and weekEventStrings[j][0] == '$')):
+                    if ((not colors.CLR.conky and weekEventStrings[j][0] == '\033') or
+                            (colors.CLR.conky and weekEventStrings[j][0] == '$')):
                         weekColorStrings[j] = ''
-                        while ((not CLR.conky and
+                        while ((not colors.CLR.conky and
                                         weekEventStrings[j][0] != 'm') or
-                                   (CLR.conky and weekEventStrings[j][0] != '}')):
+                                   (colors.CLR.conky and weekEventStrings[j][0] != '}')):
                             weekColorStrings[j] += weekEventStrings[j][0]
                             weekEventStrings[j] = weekEventStrings[j][1:]
                         weekColorStrings[j] += weekEventStrings[j][0]
@@ -1032,8 +725,8 @@ class gcalcli(object):
                         weekEventStrings[j] = weekEventStrings[j][1:]
                         line += (empty +
                                  str(self.borderColor) +
-                                 str(ART_VRT()) +
-                                 str(CLR_NRM()))
+                                 str(art.ART_VRT()) +
+                                 str(colors.CLR_NRM()))
                         done = False
                         continue
 
@@ -1045,23 +738,23 @@ class gcalcli(object):
                     line += (weekColorStrings[j] +
                              weekEventStrings[j][:cut] +
                              padding +
-                             str(CLR_NRM()))
+                             str(colors.CLR_NRM()))
                     weekEventStrings[j] = weekEventStrings[j][cut:]
 
                     done = False
                     line += (str(self.borderColor) +
-                             str(ART_VRT()) +
-                             str(CLR_NRM()))
+                             str(art.ART_VRT()) +
+                             str(colors.CLR_NRM()))
 
                 if done:
                     break
 
-                PrintMsg(CLR_NRM(), line + "\n")
+                utils.PrintMsg(colors.CLR_NRM(), line + "\n")
 
             if i < range(count)[len(range(count)) - 1]:
-                PrintMsg(CLR_NRM(), midWeekDivider + "\n")
+                utils.PrintMsg(colors.CLR_NRM(), midWeekDivider + "\n")
             else:
-                PrintMsg(CLR_NRM(), botWeekDivider + "\n")
+                utils.PrintMsg(colors.CLR_NRM(), botWeekDivider + "\n")
 
     def _tsv(self, startDateTime, eventList):
         for event in eventList:
@@ -1096,7 +789,7 @@ class gcalcli(object):
                                     if 'email' in event['creator'] else '')
 
             output = "%s\n" % output.replace('\n', '''\\n''')
-            sys.stdout.write(stringFromUnicode(output))
+            sys.stdout.write(utils.stringFromUnicode(output))
 
     def _PrintEvent(self, event, prefix):
 
@@ -1118,10 +811,10 @@ class gcalcli(object):
                         singleLine = singleLine.ljust(self.detailDescrWidth,
                                                       ' ')
                         new_descr += singleLine[:len(indent)] + \
-                                     str(ART_VRT()) + \
+                                     str(art.ART_VRT()) + \
                                      singleLine[(len(indent) + 1):
                                      (self.detailDescrWidth - 1)] + \
-                                     str(ART_VRT()) + '\n'
+                                     str(art.ART_VRT()) + '\n'
                 else:
                     new_descr += wrapper.fill(line) + "\n"
             return new_descr.rstrip()
@@ -1141,7 +834,7 @@ class gcalcli(object):
         if not prefix:
             prefix = indent
 
-        PrintMsg(self.dateColor, prefix)
+        utils.PrintMsg(self.dateColor, prefix)
 
         happeningNow = event['s'] <= self.now <= event['e']
         allDay = self._IsAllDay(event)
@@ -1149,27 +842,27 @@ class gcalcli(object):
 
         if allDay:
             fmt = '  ' + timeFormat + '  %s\n'
-            PrintMsg(eventColor, fmt % ('', self._ValidTitle(event).strip()))
+            utils.PrintMsg(eventColor, fmt % ('', self._ValidTitle(event).strip()))
         else:
             fmt = '  ' + timeFormat + '  %s\n'
-            PrintMsg(eventColor, fmt % (stringToUnicode(tmpTimeStr), self._ValidTitle(event).strip()))
+            utils.PrintMsg(eventColor, fmt % (utils.stringToUnicode(tmpTimeStr), self._ValidTitle(event).strip()))
 
         if self.detailCalendar:
             xstr = "%s  Calendar: %s\n" % (
                 detailsIndent,
                 event['gcalcli_cal']['summary']
             )
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailUrl and 'htmlLink' in event:
             hLink = self._ShortenURL(event['htmlLink'])
             xstr = "%s  Link: %s\n" % (detailsIndent, hLink)
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailUrl and 'hangoutLink' in event:
             hLink = self._ShortenURL(event['hangoutLink'])
             xstr = "%s  Hangout Link: %s\n" % (detailsIndent, hLink)
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailLocation and \
                         'location' in event and \
@@ -1178,11 +871,11 @@ class gcalcli(object):
                 detailsIndent,
                 event['location'].strip()
             )
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailAttendees and 'attendees' in event:
             xstr = "%s  Attendees:\n" % (detailsIndent)
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
             if 'self' not in event['organizer']:
                 xstr = "%s    %s: <%s>\n" % (
@@ -1191,7 +884,7 @@ class gcalcli(object):
                         .strip(),
                     event['organizer'].get('email', 'Not Provided').strip()
                 )
-                PrintMsg(CLR_NRM(), xstr)
+                utils.PrintMsg(colors.CLR_NRM(), xstr)
 
             for attendee in event['attendees']:
                 if 'self' not in attendee:
@@ -1200,11 +893,11 @@ class gcalcli(object):
                         attendee.get('displayName', 'Not Provided').strip(),
                         attendee.get('email', 'Not Provided').strip()
                     )
-                    PrintMsg(CLR_NRM(), xstr)
+                    utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailAttachments and 'attachments' in event:
             xstr = "%s  Attachments:\n" % (detailsIndent)
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
             for attendee in event['attachments']:
                 xstr = "%s    %s\n%s    -> %s\n" % (
@@ -1213,22 +906,22 @@ class gcalcli(object):
                     detailsIndent,
                     attendee.get('fileUrl', 'Not Provided').strip()
                 )
-                PrintMsg(CLR_NRM(), xstr)
+                utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailLength:
             diffDateTime = (event['e'] - event['s'])
             xstr = "%s  Length: %s\n" % (detailsIndent, diffDateTime)
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailReminders and 'reminders' in event:
             if event['reminders']['useDefault'] is True:
                 xstr = "%s  Reminder: (default)\n" % (detailsIndent)
-                PrintMsg(CLR_NRM(), xstr)
+                utils.PrintMsg(colors.CLR_NRM(), xstr)
             elif 'overrides' in event['reminders']:
                 for rem in event['reminders']['overrides']:
                     xstr = "%s  Reminder: %s %d minutes\n" % \
                            (detailsIndent, rem['method'], rem['minutes'])
-                    PrintMsg(CLR_NRM(), xstr)
+                    utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailEmail and \
                         'email' in event['creator'] and \
@@ -1237,7 +930,7 @@ class gcalcli(object):
                 detailsIndent,
                 event['creator']['email'].strip()
             )
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
         if self.detailDescr and \
                         'description' in event and \
@@ -1246,17 +939,17 @@ class gcalcli(object):
             box = True  # leave old non-box code for option later
             if box:
                 topMarker = (descrIndent +
-                             str(ART_ULC()) +
-                             (str(ART_HRZ()) *
+                             str(art.ART_ULC()) +
+                             (str(art.ART_HRZ()) *
                               ((self.detailDescrWidth - len(descrIndent)) -
                                2)) +
-                             str(ART_URC()))
+                             str(art.ART_URC()))
                 botMarker = (descrIndent +
-                             str(ART_LLC()) +
-                             (str(ART_HRZ()) *
+                             str(art.ART_LLC()) +
+                             (str(art.ART_HRZ()) *
                               ((self.detailDescrWidth - len(descrIndent)) -
                                2)) +
-                             str(ART_LRC()))
+                             str(art.ART_LRC()))
                 xstr = "%s  Description:\n%s\n%s\n%s\n" % (
                     detailsIndent,
                     topMarker,
@@ -1274,7 +967,7 @@ class gcalcli(object):
                                  descrIndent, box),
                     marker
                 )
-            PrintMsg(CLR_NRM(), xstr)
+            utils.PrintMsg(colors.CLR_NRM(), xstr)
 
     def _DeleteEvent(self, event):
 
@@ -1283,10 +976,10 @@ class gcalcli(object):
                 self._CalService().events().
                     delete(calendarId=event['gcalcli_cal']['id'],
                            eventId=event['id']))
-            PrintMsg(CLR_RED(), "Deleted!\n")
+            utils.PrintMsg(colors.CLR_RED(), "Deleted!\n")
             return
 
-        PrintMsg(CLR_MAG(), "Delete? [N]o [y]es [q]uit: ")
+        utils.PrintMsg(colors.CLR_MAG(), "Delete? [N]o [y]es [q]uit: ")
         val = raw_input()
 
         if not val or val.lower() == 'n':
@@ -1297,14 +990,14 @@ class gcalcli(object):
                 self._CalService().events().
                     delete(calendarId=event['gcalcli_cal']['id'],
                            eventId=event['id']))
-            PrintMsg(CLR_RED(), "Deleted!\n")
+            utils.PrintMsg(colors.CLR_RED(), "Deleted!\n")
 
         elif val.lower() == 'q':
             sys.stdout.write('\n')
             sys.exit(0)
 
         else:
-            PrintErrMsg('Error: invalid input\n')
+            utils.PrintErrMsg('Error: invalid input\n')
             sys.stdout.write('\n')
             sys.exit(1)
 
@@ -1312,11 +1005,11 @@ class gcalcli(object):
 
         while True:
 
-            PrintMsg(CLR_MAG(), "Edit?\n" +
-                     "[N]o [s]ave [q]uit " +
-                     "[t]itle [l]ocation " +
-                     "[w]hen len[g]th " +
-                     "[r]eminder [d]escr: ")
+            utils.PrintMsg(colors.CLR_MAG(), "Edit?\n" +
+                           "[N]o [s]ave [q]uit " +
+                           "[t]itle [l]ocation " +
+                           "[w]hen len[g]th " +
+                           "[r]eminder [d]escr: ")
             val = raw_input()
 
             if not val or val.lower() == 'n':
@@ -1336,7 +1029,7 @@ class gcalcli(object):
                         patch(calendarId=event['gcalcli_cal']['id'],
                               eventId=event['id'],
                               body=modEvent))
-                PrintMsg(CLR_RED(), "Saved!\n")
+                utils.PrintMsg(colors.CLR_RED(), "Saved!\n")
                 return
 
             elif not val or val.lower() == 'q':
@@ -1344,26 +1037,26 @@ class gcalcli(object):
                 sys.exit(0)
 
             elif val.lower() == 't':
-                PrintMsg(CLR_MAG(), "Title: ")
+                utils.PrintMsg(colors.CLR_MAG(), "Title: ")
                 val = raw_input()
                 if val.strip():
                     event['summary'] = \
-                        stringToUnicode(val.strip())
+                        utils.stringToUnicode(val.strip())
 
             elif val.lower() == 'l':
-                PrintMsg(CLR_MAG(), "Location: ")
+                utils.PrintMsg(colors.CLR_MAG(), "Location: ")
                 val = raw_input()
                 if val.strip():
                     event['location'] = \
-                        stringToUnicode(val.strip())
+                        utils.stringToUnicode(val.strip())
 
             elif val.lower() == 'w':
-                PrintMsg(CLR_MAG(), "When: ")
+                utils.PrintMsg(colors.CLR_MAG(), "When: ")
                 val = raw_input()
                 if val.strip():
                     td = (event['e'] - event['s'])
                     length = ((td.days * 1440) + (td.seconds / 60))
-                    newStart, newEnd = GetTimeFromStr(val.strip(), length)
+                    newStart, newEnd = utils.GetTimeFromStr(val.strip(), length)
                     event['s'] = parse(newStart)
                     event['e'] = parse(newEnd)
 
@@ -1384,11 +1077,11 @@ class gcalcli(object):
                                         'timeZone': event['gcalcli_cal']['timeZone']}
 
             elif val.lower() == 'g':
-                PrintMsg(CLR_MAG(), "Length (mins): ")
+                utils.PrintMsg(colors.CLR_MAG(), "Length (mins): ")
                 val = raw_input()
                 if val.strip():
                     newStart, newEnd = \
-                        GetTimeFromStr(event['start']['dateTime'], val.strip())
+                        utils.GetTimeFromStr(event['start']['dateTime'], val.strip())
                     event['s'] = parse(newStart)
                     event['e'] = parse(newEnd)
 
@@ -1411,8 +1104,8 @@ class gcalcli(object):
             elif val.lower() == 'r':
                 rem = []
                 while 1:
-                    PrintMsg(CLR_MAG(),
-                             "Enter a valid reminder or '.' to end: ")
+                    utils.PrintMsg(colors.CLR_MAG(),
+                                   "Enter a valid reminder or '.' to end: ")
                     r = raw_input()
                     if r == '.':
                         break
@@ -1422,7 +1115,7 @@ class gcalcli(object):
                     event['reminders'] = {'useDefault': False,
                                           'overrides': []}
                     for r in rem:
-                        n, m = ParseReminder(r)
+                        n, m = utils.ParseReminder(r)
                         event['reminders']['overrides'].append({'minutes': n,
                                                                 'method': m})
                 else:
@@ -1430,14 +1123,14 @@ class gcalcli(object):
                                           'overrides': []}
 
             elif val.lower() == 'd':
-                PrintMsg(CLR_MAG(), "Description: ")
+                utils.PrintMsg(colors.CLR_MAG(), "Description: ")
                 val = raw_input()
                 if val.strip():
                     event['description'] = \
-                        stringToUnicode(val.strip())
+                        utils.stringToUnicode(val.strip())
 
             else:
-                PrintErrMsg('Error: invalid input\n')
+                utils.PrintErrMsg('Error: invalid input\n')
                 sys.stdout.write('\n')
                 sys.exit(1)
 
@@ -1447,7 +1140,7 @@ class gcalcli(object):
                        yearDate=False, work=None):
 
         if len(eventList) == 0:
-            PrintMsg(CLR_YLW(), "\nNo Events Found...\n")
+            utils.PrintMsg(colors.CLR_YLW(), "\nNo Events Found...\n")
             return
 
         # 10 chars for day and length must match 'indent' in _PrintEvent
@@ -1560,12 +1253,12 @@ class gcalcli(object):
 
         format = ' %0' + str(accessLen) + 's  %s\n'
 
-        PrintMsg(CLR_BRYLW(), format % ('Access', 'Title'))
-        PrintMsg(CLR_BRYLW(), format % ('------', '-----'))
+        utils.PrintMsg(colors.CLR_BRYLW(), format % ('Access', 'Title'))
+        utils.PrintMsg(colors.CLR_BRYLW(), format % ('------', '-----'))
 
         for cal in self.allCals:
-            PrintMsg(self._CalendarColor(cal),
-                     format % (cal['accessRole'], cal['summary']))
+            utils.PrintMsg(self._CalendarColor(cal),
+                           format % (cal['accessRole'], cal['summary']))
 
     def TextQuery(self, searchText='', startText='', endText=''):
 
@@ -1585,7 +1278,7 @@ class gcalcli(object):
             try:
                 start = self.dateParser.fromString(startText)
             except:
-                PrintErrMsg('Error: failed to parse start time\n')
+                utils.PrintErrMsg('Error: failed to parse start time\n')
                 return
 
         if endText == '':
@@ -1594,7 +1287,7 @@ class gcalcli(object):
             try:
                 end = self.dateParser.fromString(endText)
             except:
-                PrintErrMsg('Error: failed to parse end time\n')
+                utils.PrintErrMsg('Error: failed to parse end time\n')
                 return
 
         eventList = self._SearchForCalEvents(start, end, searchText)
@@ -1616,7 +1309,7 @@ class gcalcli(object):
             try:
                 start = self.dateParser.fromString(startText)
             except:
-                PrintErrMsg('Error: failed to parse start time\n')
+                utils.PrintErrMsg('Error: failed to parse start time\n')
                 return
 
         # Again optimizing calls to the api.  If we've been told to
@@ -1631,7 +1324,7 @@ class gcalcli(object):
             try:
                 end = self.dateParser.fromString(endText)
             except:
-                PrintErrMsg('Error: failed to parse end time\n')
+                utils.PrintErrMsg('Error: failed to parse end time\n')
                 return
 
         eventList = self._SearchForCalEvents(start, end, None)
@@ -1655,7 +1348,7 @@ class gcalcli(object):
                 start = start.replace(hour=0, minute=0, second=0,
                                       microsecond=0)
             except:
-                PrintErrMsg('Error: failed to parse start time\n')
+                utils.PrintErrMsg('Error: failed to parse start time\n')
                 return
 
         # convert start date to the beginning of the week or month
@@ -1696,11 +1389,11 @@ class gcalcli(object):
             return
 
         if len(self.cals) > 1:
-            PrintErrMsg("You must only specify a single calendar\n")
+            utils.PrintErrMsg("You must only specify a single calendar\n")
             return
 
         if len(self.cals) < 1:
-            PrintErrMsg(
+            utils.PrintErrMsg(
                 "Calendar not specified or not found.\nIf \"gcalcli list\" doesn't find the calendar you're trying to use,\nyour cache file might be stale and you might need to remove it and try again\n")
             return
 
@@ -1713,7 +1406,7 @@ class gcalcli(object):
             rem['reminders'] = {'useDefault': False,
                                 'overrides': []}
             for r in reminder:
-                n, m = ParseReminder(r)
+                n, m = utils.ParseReminder(r)
                 rem['reminders']['overrides'].append({'minutes': n,
                                                       'method': m})
 
@@ -1725,16 +1418,16 @@ class gcalcli(object):
 
         if self.detailUrl:
             hLink = self._ShortenURL(newEvent['htmlLink'])
-            PrintMsg(CLR_GRN(), 'New event added: %s\n' % hLink)
+            utils.PrintMsg(colors.CLR_GRN(), 'New event added: %s\n' % hLink)
 
     def AddEvent(self, eTitle, eWhere, eStart, eEnd, eDescr, eWho, reminder):
 
         if len(self.cals) != 1:
-            PrintErrMsg("Must specify a single calendar\n")
+            utils.PrintErrMsg("Must specify a single calendar\n")
             return
 
         event = {}
-        event['summary'] = stringToUnicode(eTitle)
+        event['summary'] = utils.stringToUnicode(eTitle)
 
         if self.allDay:
             event['start'] = {'date': eStart}
@@ -1749,17 +1442,17 @@ class gcalcli(object):
             print("Not all day!")
 
         if eWhere:
-            event['location'] = stringToUnicode(eWhere)
+            event['location'] = utils.stringToUnicode(eWhere)
         if eDescr:
-            event['description'] = stringToUnicode(eDescr)
+            event['description'] = utils.stringToUnicode(eDescr)
 
-        event['attendees'] = list(map(lambda w: {'email': stringToUnicode(w)}, eWho))
+        event['attendees'] = list(map(lambda w: {'email': utils.stringToUnicode(w)}, eWho))
 
         if reminder or not self.defaultReminders:
             event['reminders'] = {'useDefault': False,
                                   'overrides': []}
             for r in reminder:
-                n, m = ParseReminder(r)
+                n, m = utils.ParseReminder(r)
                 event['reminders']['overrides'].append({'minutes': n,
                                                         'method': m})
 
@@ -1770,7 +1463,7 @@ class gcalcli(object):
 
         if self.detailUrl:
             hLink = self._ShortenURL(newEvent['htmlLink'])
-            PrintMsg(CLR_GRN(), 'New event added: %s\n' % hLink)
+            utils.PrintMsg(colors.CLR_GRN(), 'New event added: %s\n' % hLink)
 
     def DeleteEvents(self, searchText='', expert=False, start=None, end=None):
 
@@ -1860,26 +1553,26 @@ class gcalcli(object):
                 print("+----------------+")
 
             if hasattr(ve, 'summary'):
-                DebugPrint("SUMMARY: %s\n" % ve.summary.value)
+                utils.DebugPrint("SUMMARY: %s\n" % ve.summary.value)
                 if verbose:
                     print("Event........%s" % ve.summary.value)
                 event['summary'] = ve.summary.value
 
             if hasattr(ve, 'location'):
-                DebugPrint("LOCATION: %s\n" % ve.location.value)
+                utils.DebugPrint("LOCATION: %s\n" % ve.location.value)
                 if verbose:
                     print("Location.....%s" % ve.location.value)
                 event['location'] = ve.location.value
 
             if not hasattr(ve, 'dtstart') or not hasattr(ve, 'dtend'):
-                PrintErrMsg("Error: event does not have a dtstart and "
-                            "dtend!\n")
+                utils.PrintErrMsg("Error: event does not have a dtstart and "
+                                  "dtend!\n")
                 return None
 
             if ve.dtstart.value:
-                DebugPrint("DTSTART: %s\n" % ve.dtstart.value.isoformat())
+                utils.DebugPrint("DTSTart.ART: %s\n" % ve.dtstart.value.isoformat())
             if ve.dtend.value:
-                DebugPrint("DTEND: %s\n" % ve.dtend.value.isoformat())
+                utils.DebugPrint("DTEND: %s\n" % ve.dtend.value.isoformat())
             if verbose:
                 if ve.dtstart.value:
                     print("Start........%s" % \
@@ -1896,7 +1589,7 @@ class gcalcli(object):
 
             if hasattr(ve, 'rrule'):
 
-                DebugPrint("RRULE: %s\n" % ve.rrule.value)
+                utils.DebugPrint("RRULE: %s\n" % ve.rrule.value)
                 if verbose:
                     print("Recurrence...%s" % ve.rrule.value)
 
@@ -1907,7 +1600,7 @@ class gcalcli(object):
                 # Timezone madness! Note that we're using the timezone for the
                 # calendar being added to. This is OK if the event is in the
                 # same timezone. This needs to be changed to use the timezone
-                # from the DTSTART and DTEND values. Problem is, for example,
+                # from the DTSTart.ART and DTEND values. Problem is, for example,
                 # the TZID might be "Pacific Standard Time" and Google expects
                 # a timezone string like "America/Los_Angeles". Need to find
                 # a way in python to convert to the more specific timezone
@@ -1929,7 +1622,7 @@ class gcalcli(object):
                     event['reminders'] = {'useDefault': False,
                                           'overrides': []}
                     for r in reminder:
-                        n, m = ParseReminder(r)
+                        n, m = utils.ParseReminder(r)
                         event['reminders']['overrides'].append({'minutes': n,
                                                                 'method': m})
 
@@ -1948,13 +1641,13 @@ class gcalcli(object):
 
             if hasattr(ve, 'description') and ve.description.value.strip():
                 descr = ve.description.value.strip()
-                DebugPrint("DESCRIPTION: %s\n" % descr)
+                utils.DebugPrint("DESCRIPTION: %s\n" % descr)
                 if verbose:
                     print("Description:\n%s" % descr)
                 event['description'] = descr
 
             if hasattr(ve, 'organizer'):
-                DebugPrint("ORGANIZER: %s\n" % ve.organizer.value)
+                utils.DebugPrint("ORGANIZER: %s\n" % ve.organizer.value)
 
                 if ve.organizer.value.startswith("MAILTO:"):
                     email = ve.organizer.value[7:]
@@ -1966,7 +1659,7 @@ class gcalcli(object):
                                       'email': email}
 
             if hasattr(ve, 'attendee_list'):
-                DebugPrint("ATTENDEE_LIST : %s\n" % ve.attendee_list)
+                utils.DebugPrint("ATTENDEE_LIST : %s\n" % ve.attendee_list)
                 if verbose:
                     print("attendees:")
                 event['attendees'] = []
@@ -1986,14 +1679,14 @@ class gcalcli(object):
         try:
             import vobject
         except:
-            PrintErrMsg('Python vobject module not installed!\n')
+            utils.PrintErrMsg('Python vobject module not installed!\n')
             sys.exit(1)
 
         if dump:
             verbose = True
 
         if not dump and len(self.cals) != 1:
-            PrintErrMsg("Must specify a single calendar\n")
+            utils.PrintErrMsg("Must specify a single calendar\n")
             return
 
         f = sys.stdin
@@ -2002,7 +1695,7 @@ class gcalcli(object):
             try:
                 f = open(icsFile)
             except Exception as e:
-                PrintErrMsg("Error: " + str(e) + "!\n")
+                utils.PrintErrMsg("Error: " + str(e) + "!\n")
                 sys.exit(1)
 
         while True:
@@ -2028,10 +1721,10 @@ class gcalcli(object):
                             insert(calendarId=self.cals[0]['id'],
                                    body=event))
                     hLink = self._ShortenURL(newEvent['htmlLink'])
-                    PrintMsg(CLR_GRN(), 'New event added: %s\n' % hLink)
+                    utils.PrintMsg(colors.CLR_GRN(), 'New event added: %s\n' % hLink)
                     continue
 
-                PrintMsg(CLR_MAG(), "\n[S]kip [i]mport [q]uit: ")
+                utils.PrintMsg(colors.CLR_MAG(), "\n[S]kip [i]mport [q]uit: ")
                 val = raw_input()
                 if not val or val.lower() == 's':
                     continue
@@ -2041,591 +1734,37 @@ class gcalcli(object):
                             insert(calendarId=self.cals[0]['id'],
                                    body=event))
                     hLink = self._ShortenURL(newEvent['htmlLink'])
-                    PrintMsg(CLR_GRN(), 'New event added: %s\n' % hLink)
+                    utils.PrintMsg(colors.CLR_GRN(), 'New event added: %s\n' % hLink)
                 elif val.lower() == 'q':
                     sys.exit(0)
                 else:
-                    PrintErrMsg('Error: invalid input\n')
+                    utils.PrintErrMsg('Error: invalid input\n')
                     sys.exit(1)
-
-
-def GetColor(value):
-    colors = {'default': CLR_NRM(),
-              'black': CLR_BLK(),
-              'brightblack': CLR_BRBLK(),
-              'red': CLR_RED(),
-              'brightred': CLR_BRRED(),
-              'green': CLR_GRN(),
-              'brightgreen': CLR_BRGRN(),
-              'yellow': CLR_YLW(),
-              'brightyellow': CLR_BRYLW(),
-              'blue': CLR_BLU(),
-              'brightblue': CLR_BRBLU(),
-              'magenta': CLR_MAG(),
-              'brightmagenta': CLR_BRMAG(),
-              'cyan': CLR_CYN(),
-              'brightcyan': CLR_BRCYN(),
-              'white': CLR_WHT(),
-              'brightwhite': CLR_BRWHT(),
-              None: CLR_NRM()}
-
-    if value in colors:
-        return colors[value]
-    else:
-        return None
-
-
-def GetCalColors(calNames):
-    calColors = {}
-    for calName in calNames:
-        calNameParts = calName.split("#")
-        calNameSimple = calNameParts[0]
-        calColor = calColors.get(calNameSimple)
-        if len(calNameParts) > 0:
-            calColorRaw = calNameParts[-1]
-            calColorNew = GetColor(calColorRaw)
-            if calColorNew is not None:
-                calColor = calColorNew
-        calColors[calNameSimple] = calColor
-    return calColors
-
-
-@click.command("agenda")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--details", type=click.Choice(["all", "calendar", "location", "length", "reminders",
-                                              "description", "longurl", "shorturl", "url", "attendees", "email"]),
-              multiple=True,
-              help="Which parts to display. Repeat this option to specify a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--lineart/--no-lineart", default=True, help="Enable/Disable line art")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-def show_agenda(cache, calendar, client_id, client_secret, color, set_color, config_folder, conky,
-                default_calendar, details, include_config, lineart, user_locale, military, monday, refresh, started,
-                verbose):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-    gcal.AgendaQuery()
-
-
-@click.command("list")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-def list_calendars(cache, calendar, client_id, client_secret, color, set_color, config_folder, conky,
-                   default_calendar, include_config, user_locale, military, monday, refresh, started,
-                   verbose):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-    gcal.ListAllCalendars()
-
-
-@click.command("search")
-@click.argument("query")
-@click.option("--start-date", "-s", default=None, help="The starting date to start searching events from")
-@click.option("--end-date", "-e", default=None, help="The ending date to start searching events to")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--details", type=click.Choice(["all", "calendar", "location", "length", "reminders",
-                                              "description", "longurl", "shorturl", "url", "attendees", "email"]),
-              multiple=True,
-              help="Which parts to display. Repeat this option to specify a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--lineart/--no-lineart", default=True, help="Enable/Disable line art")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-@click.option("--tsv", default=False, help="Show output using tab seperated values")
-def search_events(query, start_date, end_date, cache, calendar, client_id, client_secret, color, set_color,
-                  config_folder, conky,
-                  default_calendar, details, include_config, lineart, user_locale, military, monday, refresh, started,
-                  verbose, tsv):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-
-    if start_date is None and end_date is None:
-        gcal.TextQuery(query)
-    elif start_date is not None and end_date is None:
-        gcal.TextQuery(query, start_date)
-    elif start_date is not None and end_date is not None:
-        gcal.TextQuery(query, start_date, end_date)
-    else:
-        raise click.BadParameter("--start-date should be used alongside --end-date!")
-
-
-@click.command("calw")
-@click.option("--start-date", "-s", default=None, help="The starting date to start searching events from")
-@click.option("--end-date", "-e", default=None, help="The ending date to start searching events to")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--details", type=click.Choice(["all", "calendar", "location", "length", "reminders",
-                                              "description", "longurl", "shorturl", "url", "attendees", "email"]),
-              multiple=True,
-              help="Which parts to display. Repeat this option to specify a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--lineart/--no-lineart", default=True, help="Enable/Disable line art")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-@click.option("--tsv/--no-tsv", default=False, help="Show output using tab seperated values")
-def show_calendar_week(start_date, end_date, cache, calendar, client_id, client_secret, color, set_color,
-                       config_folder, conky,
-                       default_calendar, details, include_config, lineart, user_locale, military, monday, refresh,
-                       started,
-                       verbose, tsv):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-
-    if start_date is None and end_date is None:
-        gcal.CalQuery("calw")
-    elif start_date is not None and end_date is None:
-        gcal.CalQuery("calw", start_date)
-    elif start_date is not None and end_date is not None:
-        gcal.TextQuery("calw", start_date, end_date)
-    else:
-        raise click.BadParameter("--start-date should be used alongside --end-date!")
-
-
-@click.command("calm")
-@click.option("--start-date", "-s", default=None, help="The starting date to start searching events from")
-@click.option("--weeks", "-w", default=1, help="The ending date to start searching events to")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--details", type=click.Choice(["all", "calendar", "location", "length", "reminders",
-                                              "description", "longurl", "shorturl", "url", "attendees", "email"]),
-              multiple=True,
-              help="Which parts to display. Repeat this option to specify a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--lineart/--no-lineart", default=True, help="Enable/Disable line art")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-@click.option("--tsv/--no-tsv", default=False, help="Show output using tab seperated values")
-def show_calendar_month(start_date, weeks, cache, calendar, client_id, client_secret, color, set_color,
-                        config_folder, conky,
-                        default_calendar, details, include_config, lineart, user_locale, military, monday, refresh,
-                        started,
-                        verbose, tsv):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-
-    if start_date is None:
-        gcal.CalQuery("calm", count=weeks)
-    else:
-        gcal.CalQuery("calm", count=weeks, startText=start_date)
-
-
-@click.command("quick")
-@click.argument("event-title")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], multiple=True, help="Which calendars to use;" +
-                                                            "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-@click.option("--reminder", "-r", multiple=True, callback=validate_reminder, default=False,
-              help="Reminders in the form 'TIME METH' or 'TIME'.  TIME " +
-                   "is a number which may be followed by an optional " +
-                   "'w', 'd', 'h', or 'm' (meaning weeks, days, hours, " +
-                   "minutes) and default to minutes.  METH is a string " +
-                   "'popup', 'email', or 'sms' and defaults to popup.")
-def quick_add_event(event_title, cache, calendar, client_id, client_secret, color, set_color, config_folder, conky,
-                    default_calendar, include_config, user_locale, military, monday, refresh, started,
-                    verbose, reminder):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calendar,
-                   calNameColors=calNameColors)
-    gcal.load()
-    gcal.QuickAddEvent(str(event_title), reminder=reminder)
-
-
-@click.command("add")
-@click.option("--title", default=None, help="The title of the event")
-@click.option("--location", default=None, help="The location of the event")
-@click.option("--when", default=None, help="When the event is")
-@click.option("--duration", default=None, help="The duration of the event in minutes or days (if --allday is used)")
-@click.option("--allday/--no-allday", default=False, help="If the event is all day")
-@click.option("--description", default=False, help="The description of the event")
-@click.option("--prompt/--no-prompt", default=True, help="Prompt for missing event data")
-@click.option("--who", default=[], multiple=[], help="Who is attending the event")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], multiple=True, help="Which calendars to use;" +
-                                                            "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-@click.option("--reminder", "-r", multiple=True, callback=validate_reminder, default=False,
-              help="Reminders in the form 'TIME METH' or 'TIME'.  TIME " +
-                   "is a number which may be followed by an optional " +
-                   "'w', 'd', 'h', or 'm' (meaning weeks, days, hours, " +
-                   "minutes) and default to minutes.  METH is a string " +
-                   "'popup', 'email', or 'sms' and defaults to popup.")
-def add_event(title, location, when, duration, allday, description, prompt, who,
-              cache, calendar, client_id, client_secret, color, set_color, config_folder, conky,
-              default_calendar, include_config, user_locale, military, monday, refresh, started,
-              verbose, reminder):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calendar,
-                   calNameColors=calNameColors)
-    gcal.load()
-    if prompt:
-        if title is None:
-            PrintMsg(CLR_MAG(), "Title: ")
-            title = raw_input()
-        if location is None:
-            PrintMsg(CLR_MAG(), "Location: ")
-            location = raw_input()
-        if when is None:
-            PrintMsg(CLR_MAG(), "When: ")
-            when = raw_input()
-        if duration is None:
-            if allday:
-                PrintMsg(CLR_MAG(), "Duration (days): ")
-            else:
-                PrintMsg(CLR_MAG(), "Duration (mins): ")
-            duration = raw_input()
-        if description is None:
-            PrintMsg((CLR_MAG(), "Description: "))
-            description = raw_input()
-        if not reminder:
-            reminder = []
-            while 1:
-                PrintMsg(CLR_MAG(), "Enter a valid reminder or 'q' to end: ")
-                r = raw_input()
-                if str(r) == 'q':
-                    print("Breaking...")
-                    break
-                n, m = ParseReminder(str(r))
-                reminder.append(str(n) + ' ' + m)
-
-    eStart, eEnd = GetTimeFromStr(when, duration)
-    print(duration)
-    print(eStart)
-    print(eEnd)
-
-    gcal.AddEvent(title, location, eStart, eEnd,
-                  description, who, reminder)
-
-
-@click.command("delete")
-@click.argument("title")
-@click.option("--start-date", "-s", default=None, help="The starting date to start deleting events from")
-@click.option("--end-date", "-e", default=None, help="The ending date to start deleting events to")
-@click.option("--force", "-f", default=False, help="Force delete events. USE WITH CAUTION")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-def delete_events(title, start_date, end_date, force, cache, calendar, client_id, client_secret, color, set_color,
-                  config_folder, conky,
-                  default_calendar, include_config, user_locale, military, monday, refresh, started,
-                  verbose):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-
-    eStart = None
-    eEnd = None
-
-    if start_date is not None:
-        eStart = gcal.dateParser.fromString(start_date)
-    elif start_date is not None and end_date is not None:
-        eStart = gcal.dateParser.fromString(start_date)
-        eEnd = gcal.dateParser.fromString(end_date)
-
-    gcal.DeleteEvents(str(title), force, eStart, eEnd)
-
-
-@click.command("edit")
-@click.argument("title")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-def edit_events(title, cache, calendar, client_id, client_secret, color, set_color, config_folder, conky,
-                default_calendar, include_config, user_locale, military, monday, refresh, started,
-                verbose):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-    gcal.EditEvents(str(title))
-
-
-@click.command("remind")
-@click.option("--minutes", default=None, help="Extends the range of events to be notified for")
-@click.option("--command", default=None, help="The command to notify with")
-@click.option("--use-reminders", default=False, help="Use reminders")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-def remind_events(minutes, command, use_reminders, cache, calendar, client_id, client_secret, color, set_color,
-                  config_folder, conky,
-                  default_calendar, include_config, user_locale, military, monday, refresh, started,
-                  verbose):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-    if minutes is not None and command is not None:
-        gcal.Remind(int(minutes), command, use_reminders=use_reminders)
-    elif minutes is not None:
-        gcal.Remind(int(minutes), use_reminders=use_reminders)
-    else:
-        gcal.Remind(use_reminders=use_reminders)
-
-@click.command("import")
-@click.argument("path")
-@click.option("--dump", default=False, help="Dump events to screen")
-@click.option("--cache/--no-cache", default=True, help="Execute command without using cache")
-@click.option("--calendar", default=[], help="Which calendars to use;" +
-                                             "repeat this option to specify a list of values")
-@click.option("--client-id", default=None, help="API client_id")
-@click.option("--client-secret", default=None, help="API client_secret")
-@click.option("--color/--no-color", default=True, help="Enabled/Disable all color output")
-@click.option("--set-color", nargs=2, default=[], multiple=True, callback=validate_set_color)
-@click.option("--config-folder", default=None, help="Optional directory to load/store all configuration information")
-@click.option("--conky/--no-conky", default=False, help="Use Conky color codes")
-@click.option("--default-calendar", default=[],
-              help="Optional default calendar to use if no --calendar options are given; " +
-                   "repeat this this option to speciy a list of values")
-@click.option("--include-config/--no-include-config", default=False,
-              help="Whether to include ~/.gcalclirc when using --config-folder")
-@click.option("--locale", "user_locale", default=None, help="System locale")
-@click.option("--military/--no-military", default=False, help="Use 24 hour display")
-@click.option("--monday/--no-monday", default=False, help="Start the week on Monday")
-@click.option("--refresh/--no-refresh", default=False, help="Delete and refresh cached data")
-@click.option("--started/--no-started", default=True, help="Show events that have started")
-@click.option("--verbose", "-v", default=False, help="Show logs")
-@click.option("--reminder", "-r", multiple=True, callback=validate_reminder, default=False,
-              help="Reminders in the form 'TIME METH' or 'TIME'.  TIME " +
-                   "is a number which may be followed by an optional " +
-                   "'w', 'd', 'h', or 'm' (meaning weeks, days, hours, " +
-                   "minutes) and default to minutes.  METH is a string " +
-                   "'popup', 'email', or 'sms' and defaults to popup.")
-def import_ics(path, dump, cache, calendar, client_id, client_secret, color, set_color,
-                  config_folder, conky,
-                  default_calendar, include_config, user_locale, military, monday, refresh, started,
-                  verbose, reminder):
-    """Shows the current agenda. Uses the default calendar unless otherwise specified"""
-
-    calNames, calNameColors = setup_gcal(color, False, conky, user_locale, calendar, default_calendar)
-    gcal = gcalcli(calNames=calNames,
-                   calNameColors=calNameColors)
-    gcal.load()
-    gcal.ImportICS(verbose=verbose, dump=dump, icsFile=path, reminder=reminder)
-
-
-
-
 
 
 def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
     if not color:
-        CLR.useColor = False
+        colors.CLR.useColor = False
 
     if not lineart:
-        ART.useArt = False
+        art.ART.useArt = False
 
     if conky:
-        SetConkyColors()
+        colors.SetConkyColors()
 
     if user_locale:
         try:
             locale.setlocale(locale.LC_ALL, user_locale)
         except Exception as e:
-            PrintErrMsg("Error: " + str(e) + "!\n"
-                                             "Check supported locales of your system.\n")
+            utils.PrintErrMsg("Error: " + str(e) + "!\n"
+                                                   "Check supported locales of your system.\n")
             sys.exit(1)
 
     if len(calendar) == 0:
         calendar = default_calendar
 
     calNameColors = []
-    calColors = GetCalColors(calendar)
+    calColors = colors.GetCalColors(calendar)
     calNamesFiltered = []
     for calName in calendar:
         calNameSimple = calName.split("#")[0]
@@ -2635,29 +1774,5 @@ def setup_gcal(color, lineart, conky, user_locale, calendar, default_calendar):
     return calNames, calNameColors
 
 
-def SIGINT_handler(signum, frame):
-    PrintErrMsg('Signal caught, bye!\n')
-    sys.exit(1)
 
 
-@click.group()
-def gcal():
-    """Commands to interact with a Google Calendar"""
-    pass
-
-
-gcal.add_command(show_agenda)
-gcal.add_command(list_calendars)
-gcal.add_command(search_events)
-gcal.add_command(show_calendar_week)
-gcal.add_command(show_calendar_month)
-gcal.add_command(quick_add_event)
-gcal.add_command(add_event)
-gcal.add_command(delete_events)
-gcal.add_command(edit_events)
-gcal.add_command(remind_events)
-
-signal.signal(signal.SIGINT, SIGINT_handler)
-
-if __name__ == '__main__':
-    gcal()
