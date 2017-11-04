@@ -21,37 +21,37 @@ except ImportError as e:
 from . import colors
 
 
-def stringToUnicode(string):
+def string_to_unicode(string):
     return str(string)
 
 
-def stringFromUnicode(string):
+def string_from_unicode(string):
     return string.encode(locale.getlocale()[1] or
                          locale.getpreferredencoding(False) or
                          "UTF-8", "replace")
 
 
-def Usage(expanded=False):
+def usage(expanded=False):
     sys.stdout.write(__doc__ % sys.argv[0])
     sys.exit(1)
 
 
-def PrintErrMsg(msg):
-    PrintMsg(colors.CLR_BRRED(), msg)
+def print_err_msg(msg):
+    print_msg(colors.ClrBrred(), msg)
 
 
-def PrintMsg(color, msg):
-    if colors.CLR.useColor:
+def print_msg(color, msg):
+    if colors.CLR.use_color:
         sys.stdout.write(str(color))
         sys.stdout.write(str(msg))
-        sys.stdout.write(str(colors.CLR_NRM()))
+        sys.stdout.write(str(colors.ClrNrm()))
     else:
         sys.stdout.write(msg)
 
 
-def DebugPrint(msg):
+def debug_print(msg):
     return
-    PrintMsg(colors.CLR_YLW(), msg)
+    print_msg(colors.ClrYlw(), msg)
 
 
 def dprint(obj):
@@ -64,71 +64,71 @@ def dprint(obj):
 
 class DateTimeParser:
     def __init__(self):
-        self.pdtCalendar = parsedatetime.Calendar()
+        self.pdt_calendar = parsedatetime.Calendar()
 
-    def fromString(self, eWhen):
-        defaultDateTime = datetime.now(tzlocal()).replace(hour=0,
+    def from_string(self, e_when):
+        default_date_time = datetime.now(tzlocal()).replace(hour=0,
                                                           minute=0,
                                                           second=0,
                                                           microsecond=0)
 
         try:
-            eTimeStart = parse(eWhen, default=defaultDateTime)
-        except:
-            struct, result = self.pdtCalendar.parse(eWhen)
+            e_time_start = parse(e_when, default=default_date_time)
+        except BaseException:
+            struct, result = self.pdt_calendar.parse(e_when)
             if not result:
                 raise ValueError("Date and time is invalid")
-            eTimeStart = datetime.fromtimestamp(time.mktime(struct), tzlocal())
+            e_time_start = datetime.fromtimestamp(time.mktime(struct), tzlocal())
 
-        return eTimeStart
+        return e_time_start
 
 
-def DaysSinceEpoch(dt):
+def days_since_epoch(dt):
     # Because I hate magic numbers
     __DAYS_IN_SECONDS__ = 24 * 60 * 60
     return calendar.timegm(dt.timetuple()) / __DAYS_IN_SECONDS__
 
 
-def GetTimeFromStr(eWhen, eDuration=0, allday=False):
+def get_time_from_str(e_when, e_duration=0, allday=False):
     dtp = DateTimeParser()
 
     try:
-        eTimeStart = dtp.fromString(eWhen)
-    except:
-        PrintErrMsg('Date and time is invalid!\n')
+        e_time_start = dtp.from_string(e_when)
+    except BaseException:
+        print_err_msg('Date and time is invalid!\n')
         sys.exit(1)
 
     if allday:
         try:
-            eTimeStop = eTimeStart + timedelta(days=float(eDuration))
-        except:
-            PrintErrMsg('Duration time (days) is invalid\n')
+            e_time_stop = e_time_start + timedelta(days=float(e_duration))
+        except BaseException:
+            print_err_msg('Duration time (days) is invalid\n')
             sys.exit(1)
 
-        sTimeStart = eTimeStart.date().isoformat()
-        sTimeStop = eTimeStop.date().isoformat()
+        s_time_start = e_time_start.date().isoformat()
+        s_time_stop = e_time_stop.date().isoformat()
 
     else:
         try:
-            eTimeStop = eTimeStart + timedelta(minutes=float(eDuration))
-        except:
-            PrintErrMsg('Duration time (minutes) is invalid\n')
+            e_time_stop = e_time_start + timedelta(minutes=float(e_duration))
+        except BaseException:
+            print_err_msg('Duration time (minutes) is invalid\n')
             sys.exit(1)
 
-        sTimeStart = eTimeStart.isoformat()
-        sTimeStop = eTimeStop.isoformat()
+        s_time_start = e_time_start.isoformat()
+        s_time_stop = e_time_stop.isoformat()
 
-    return sTimeStart, sTimeStop
+    return s_time_start, s_time_stop
 
 
-def ParseReminder(rem):
-    matchObj = re.match(r'^(\d+)([wdhm]?)(?:\s+(popup|email|sms))?$', rem)
-    if not matchObj:
-        PrintErrMsg('Invalid reminder: ' + rem + '\n')
+def parse_reminder(rem):
+    match_obj = re.match(r'^(\d+)([wdhm]?)(?:\s+(popup|email|sms))?$', rem)
+    if not match_obj:
+        print_err_msg('Invalid reminder: ' + rem + '\n')
         sys.exit(1)
-    n = int(matchObj.group(1))
-    t = matchObj.group(2)
-    m = matchObj.group(3)
+    n = int(match_obj.group(1))
+    t = match_obj.group(2)
+    m = match_obj.group(3)
     if t == 'w':
         n = n * 7 * 24 * 60
     elif t == 'd':
@@ -142,7 +142,6 @@ def ParseReminder(rem):
     return n, m
 
 
-def SIGINT_handler(signum, frame):
-    PrintErrMsg('Signal caught, bye!\n')
+def sigint_handler(signum, frame):
+    print_err_msg('Signal caught, bye!\n')
     sys.exit(1)
-

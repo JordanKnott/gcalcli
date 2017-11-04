@@ -1,62 +1,62 @@
 class ART:
-    useArt = True
+    use_art = True
     fancy = ''
     plain = ''
 
     def __str__(self):
-        return self.fancy if self.useArt else self.plain
+        return self.fancy if self.use_art else self.plain
 
 
-class ART_HRZ(ART):
+class ArtHrz(ART):
     fancy = '\033(0\x71\033(B'
     plain = '-'
 
 
-class ART_VRT(ART):
+class ArtVrt(ART):
     fancy = '\033(0\x78\033(B'
     plain = '|'
 
 
-class ART_LRC(ART):
+class ArtLrc(ART):
     fancy = '\033(0\x6A\033(B'
     plain = '+'
 
 
-class ART_URC(ART):
+class ArtUrc(ART):
     fancy = '\033(0\x6B\033(B'
     plain = '+'
 
 
-class ART_ULC(ART):
+class ArtUlc(ART):
     fancy = '\033(0\x6C\033(B'
     plain = '+'
 
 
-class ART_LLC(ART):
+class ArtLlc(ART):
     fancy = '\033(0\x6D\033(B'
     plain = '+'
 
 
-class ART_CRS(ART):
+class ArtCrs(ART):
     fancy = '\033(0\x6E\033(B'
     plain = '+'
 
 
-class ART_LTE(ART):
+class ArtLte(ART):
     fancy = '\033(0\x74\033(B'
     plain = '+'
 
 
-class ART_RTE(ART):
+class ArtRte(ART):
     fancy = '\033(0\x75\033(B'
     plain = '+'
 
 
-class ART_BTE(ART):
+class ArtBte(ART):
     fancy = '\033(0\x76\033(B'
     plain = '+'
 
 
-class ART_UTE(ART):
+class ArtUte(ART):
     fancy = '\033(0\x77\033(B'
     plain = '+'

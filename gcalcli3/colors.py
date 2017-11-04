@@ -1,120 +1,120 @@
 class CLR:
-    useColor = True
+    use_color = True
     conky = False
 
     def __str__(self):
-        return self.color if self.useColor else ""
+        return self.color if self.use_color else ""
 
 
-class CLR_NRM(CLR):
+class ClrNrm(CLR):
     color = "\033[0m"
 
 
-class CLR_BLK(CLR):
+class ClrBlk(CLR):
     color = "\033[0;30m"
 
 
-class CLR_BRBLK(CLR):
+class ClrBrblk(CLR):
     color = "\033[30;1m"
 
 
-class CLR_RED(CLR):
+class ClrRed(CLR):
     color = "\033[0;31m"
 
 
-class CLR_BRRED(CLR):
+class ClrBrred(CLR):
     color = "\033[31;1m"
 
 
-class CLR_GRN(CLR):
+class ClrGrn(CLR):
     color = "\033[0;32m"
 
 
-class CLR_BRGRN(CLR):
+class ClrBrgrn(CLR):
     color = "\033[32;1m"
 
 
-class CLR_YLW(CLR):
+class ClrYlw(CLR):
     color = "\033[0;33m"
 
 
-class CLR_BRYLW(CLR):
+class ClrBrylw(CLR):
     color = "\033[33;1m"
 
 
-class CLR_BLU(CLR):
+class ClrBlu(CLR):
     color = "\033[0;34m"
 
 
-class CLR_BRBLU(CLR):
+class ClrBrblu(CLR):
     color = "\033[34;1m"
 
 
-class CLR_MAG(CLR):
+class ClrMag(CLR):
     color = "\033[0;35m"
 
 
-class CLR_BRMAG(CLR):
+class ClrBrmag(CLR):
     color = "\033[35;1m"
 
 
-class CLR_CYN(CLR):
+class ClrCyn(CLR):
     color = "\033[0;36m"
 
 
-class CLR_BRCYN(CLR):
+class ClrBrcyn(CLR):
     color = "\033[36;1m"
 
 
-class CLR_WHT(CLR):
+class ClrWht(CLR):
     color = "\033[0;37m"
 
 
-class CLR_BRWHT(CLR):
+class ClrBrwht(CLR):
     color = "\033[37;1m"
 
 
-def SetConkyColors():
+def set_conky_colors():
     # XXX these colors should be configurable
     CLR.conky = True
-    CLR_NRM.color = ""
-    CLR_BLK.color = "${color black}"
-    CLR_BRBLK.color = "${color black}"
-    CLR_RED.color = "${color red}"
-    CLR_BRRED.color = "${color red}"
-    CLR_GRN.color = "${color green}"
-    CLR_BRGRN.color = "${color green}"
-    CLR_YLW.color = "${color yellow}"
-    CLR_BRYLW.color = "${color yellow}"
-    CLR_BLU.color = "${color blue}"
-    CLR_BRBLU.color = "${color blue}"
-    CLR_MAG.color = "${color magenta}"
-    CLR_BRMAG.color = "${color magenta}"
-    CLR_CYN.color = "${color cyan}"
-    CLR_BRCYN.color = "${color cyan}"
-    CLR_WHT.color = "${color white}"
-    CLR_BRWHT.color = "${color white}"
+    ClrNrm.color = ""
+    ClrBlk.color = "${color black}"
+    ClrBrblk.color = "${color black}"
+    ClrRed.color = "${color red}"
+    ClrBrred.color = "${color red}"
+    ClrGrn.color = "${color green}"
+    ClrBrgrn.color = "${color green}"
+    ClrYlw.color = "${color yellow}"
+    ClrBrylw.color = "${color yellow}"
+    ClrBlu.color = "${color blue}"
+    ClrBrblu.color = "${color blue}"
+    ClrMag.color = "${color magenta}"
+    ClrBrmag.color = "${color magenta}"
+    ClrCyn.color = "${color cyan}"
+    ClrBrcyn.color = "${color cyan}"
+    ClrWht.color = "${color white}"
+    ClrBrwht.color = "${color white}"
 
 
-def GetColor(value):
-    c = {'default': CLR_NRM(),
-              'black': CLR_BLK(),
-              'brightblack': CLR_BRBLK(),
-              'red': CLR_RED(),
-              'brightred': CLR_BRRED(),
-              'green': CLR_GRN(),
-              'brightgreen': CLR_BRGRN(),
-              'yellow': CLR_YLW(),
-              'brightyellow': CLR_BRYLW(),
-              'blue': CLR_BLU(),
-              'brightblue': CLR_BRBLU(),
-              'magenta': CLR_MAG(),
-              'brightmagenta': CLR_BRMAG(),
-              'cyan': CLR_CYN(),
-              'brightcyan': CLR_BRCYN(),
-              'white': CLR_WHT(),
-              'brightwhite': CLR_BRWHT(),
-              None: CLR_NRM()}
+def get_color(value):
+    c = {'default': ClrNrm(),
+         'black': ClrBlk(),
+         'brightblack': ClrBrblk(),
+         'red': ClrRed(),
+         'brightred': ClrBrred(),
+         'green': ClrGrn(),
+         'brightgreen': ClrBrgrn(),
+         'yellow': ClrYlw(),
+         'brightyellow': ClrBrylw(),
+         'blue': ClrBlu(),
+         'brightblue': ClrBrblu(),
+         'magenta': ClrMag(),
+         'brightmagenta': ClrBrmag(),
+         'cyan': ClrCyn(),
+         'brightcyan': ClrBrcyn(),
+         'white': ClrWht(),
+         'brightwhite': ClrBrwht(),
+         None: ClrNrm()}
 
     if value in c:
         return c[value]
@@ -122,16 +122,16 @@ def GetColor(value):
         return None
 
 
-def GetCalColors(calNames):
-    calColors = {}
-    for calName in calNames:
-        calNameParts = calName.split("#")
-        calNameSimple = calNameParts[0]
-        calColor = calColors.get(calNameSimple)
-        if len(calNameParts) > 0:
-            calColorRaw = calNameParts[-1]
-            calColorNew = GetColor(calColorRaw)
-            if calColorNew is not None:
-                calColor = calColorNew
-        calColors[calNameSimple] = calColor
-    return calColors
+def get_cal_colors(cal_names):
+    cal_colors = {}
+    for cal_name in cal_names:
+        cal_name_parts = cal_name.split("#")
+        cal_name_simple = cal_name_parts[0]
+        cal_color = cal_colors.get(cal_name_simple)
+        if len(cal_name_parts) > 0:
+            cal_color_raw = cal_name_parts[-1]
+            cal_color_new = get_color(cal_color_raw)
+            if cal_color_new is not None:
+                cal_color = cal_color_new
+        cal_colors[cal_name_simple] = cal_color
+    return cal_colors
